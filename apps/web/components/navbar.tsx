@@ -1,187 +1,216 @@
 
-"use client"
+"use client";
 
-import { useState } from "react"
-import Image from "next/image"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Menu } from "lucide-react"
+import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Menu } from "lucide-react";
 
-import { Button } from "@workspace/ui/components/button"
+import { Button } from "@workspace/ui/components/button";
+
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "@workspace/ui/components/sheet"
+} from "@workspace/ui/components/sheet";
 
-import { cn } from "@workspace/ui/lib/utils"
-import logo from "@/app/images/logo.png"
-
+import { cn } from "@workspace/ui/lib/utils";
+import logo from "@/app/images/logo.png";
 
 // Navbar Links
 const navLinks = [
   { href: "/jobs", label: "Browse Jobs" },
   { href: "/companies", label: "Company" },
   { href: "/pricing", label: "Pricing" },
-]
-
+];
 
 export function Navbar() {
-
-  const [open, setOpen] = useState(false)
-  const pathname = usePathname()
+  const [open, setOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
-    <div className="sticky top-4 z-50 mx-auto my-4 w-full max-w-[1440px] px-3 sm:px-5">
+    <header className="sticky top-0 z-50 w-full">
 
-      <div className="flex h-[72px] items-center justify-between rounded-2xl border border-white/[0.07] bg-[#141418] px-3 shadow-[0_1px_2px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(0,0,0,0.04)]">
+      {/* Main Navbar */}
+      <div className="w-full border-b border-white/[0.07] bg-[#141418] shadow-[0_2px_12px_rgba(0,0,0,0.2)]">
 
-        {/* Logo */}
-        <Link href="/" className="flex shrink-0 items-center">
-          <Image
-            src={logo}
-            alt="hireloop"
-            width={154}
-            height={44}
-            className="h-10 w-auto sm:h-11"
-            priority
-          />
-        </Link>
+        <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between px-4 sm:h-[72px] sm:px-6 lg:px-8">
 
+          {/* Logo */}
+          <Link
+            href="/"
+            className="flex shrink-0 items-center"
+            onClick={() => setOpen(false)}
+          >
+            <Image
+              src={logo}
+              alt="HireLoop"
+              width={154}
+              height={44}
+              priority
+              className="h-9 w-auto object-contain sm:h-11"
+            />
+          </Link>
 
-        {/* Desktop Navbar */}
-        <div className="hidden items-center lg:flex">
+          {/* Desktop Navigation */}
+          <div className="hidden items-center lg:flex">
 
-          <nav className="flex items-center gap-8">
+            <nav className="flex items-center gap-7 xl:gap-9">
 
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "whitespace-nowrap text-[15px] font-semibold text-[#EDEDEF] underline-offset-[10px] transition-colors hover:text-white",
-                  pathname === link.href && "underline decoration-1"
-                )}
+              {navLinks.map((link) => {
+                const isActive =
+                  pathname === link.href ||
+                  pathname.startsWith(`${link.href}/`);
+
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={cn(
+                      "whitespace-nowrap text-sm font-semibold text-[#EDEDEF] transition-colors hover:text-white xl:text-[15px]",
+                      isActive && "text-[#A49FFF]"
+                    )}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
+
+            </nav>
+
+            {/* Divider */}
+            <div className="mx-5 h-6 w-px bg-white/15 xl:mx-6" />
+
+            {/* Auth Buttons */}
+            <div className="flex shrink-0 items-center gap-2">
+
+              <Button
+                variant="ghost"
+                nativeButton={false}
+                render={<Link href="/sign-in" />}
+                className="h-11 rounded-lg px-3 text-sm font-semibold text-[#A49FFF] hover:bg-white/5 hover:text-white"
               >
-                {link.label}
-              </Link>
-            ))}
+                Sign In
+              </Button>
 
-          </nav>
+              <Button
+                nativeButton={false}
+                render={<Link href="/sign-up" />}
+                className="h-11 rounded-lg bg-[#5C53FE] px-4 text-sm font-bold text-white shadow-[inset_0_3px_10px_rgba(255,255,255,0.2)] transition-colors hover:bg-[#6D65FF]"
+              >
+                Get Started
+              </Button>
 
+            </div>
 
-          {/* Divider */}
-          <span className="mx-4 h-6 w-px bg-white/15" />
+          </div>
 
+          {/* Mobile Navigation */}
+          <div className="flex items-center lg:hidden">
 
-          {/* Auth Buttons */}
-          <div className="flex items-center gap-2">
+            <Sheet open={open} onOpenChange={setOpen}>
 
-            <Button
-              variant="ghost"
-              nativeButton={false}
-              render={<Link href="/sign-in" />}
-              className="h-[52px] rounded-lg px-3 text-[15px] font-semibold text-[#A49FFF] hover:bg-white/5 hover:text-white"
-            >
-              Sign In
-            </Button>
+              <SheetTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Open navigation menu"
+                    className="size-10 text-white hover:bg-white/10"
+                  />
+                }
+              >
+                <Menu className="size-6" />
+              </SheetTrigger>
 
-            <Button
-              nativeButton={false}
-              render={<Link href="/sign-up" />}
-              className="h-[52px] rounded-lg bg-[#5C53FE] px-4 text-base font-bold text-[#EDEDEF] shadow-[inset_0_3px_10px_rgba(255,255,255,0.2),0_2px_4px_rgba(9,10,21,0.1)] hover:bg-[#6D65FF] hover:text-white"
-            >
-              Get Started
-            </Button>
+              <SheetContent
+                side="right"
+                className="flex w-[280px] flex-col border-l border-white/10 bg-[#141418] p-0 text-white sm:w-[320px]"
+              >
+
+                {/* Sheet Header */}
+                <SheetHeader className="border-b border-white/10 px-5 py-5">
+
+                  <SheetTitle className="flex items-center">
+                    <Link
+                      href="/"
+                      onClick={() => setOpen(false)}
+                    >
+                      <Image
+                        src={logo}
+                        alt="HireLoop"
+                        width={130}
+                        height={40}
+                        className="h-9 w-auto object-contain"
+                      />
+                    </Link>
+                  </SheetTitle>
+
+                </SheetHeader>
+
+                {/* Mobile Links */}
+                <nav className="flex flex-1 flex-col gap-2 px-4 py-6">
+
+                  {navLinks.map((link) => {
+                    const isActive =
+                      pathname === link.href ||
+                      pathname.startsWith(`${link.href}/`);
+
+                    return (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setOpen(false)}
+                        className={cn(
+                          "rounded-xl px-4 py-3 text-sm font-semibold text-[#EDEDEF] transition-colors hover:bg-white/[0.06] hover:text-white",
+                          isActive &&
+                            "bg-purple-500/10 text-[#A49FFF]"
+                        )}
+                      >
+                        {link.label}
+                      </Link>
+                    );
+                  })}
+
+                </nav>
+
+                {/* Mobile Auth Buttons */}
+                <div className="flex flex-col gap-3 border-t border-white/10 p-5">
+
+                  <Button
+                    variant="outline"
+                    nativeButton={false}
+                    render={<Link href="/sign-in" />}
+                    onClick={() => setOpen(false)}
+                    className="h-11 w-full border-white/10 bg-transparent text-sm font-semibold text-[#A49FFF] hover:bg-white/5 hover:text-white"
+                  >
+                    Sign In
+                  </Button>
+
+                  <Button
+                    nativeButton={false}
+                    render={<Link href="/sign-up" />}
+                    onClick={() => setOpen(false)}
+                    className="h-11 w-full bg-[#5C53FE] text-sm font-semibold text-white hover:bg-[#6D65FF]"
+                  >
+                    Get Started
+                  </Button>
+
+                </div>
+
+              </SheetContent>
+
+            </Sheet>
 
           </div>
 
         </div>
 
-
-        {/* Mobile Navbar */}
-        <div className="lg:hidden">
-
-          <Sheet open={open} onOpenChange={setOpen}>
-
-            <SheetTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-[#EDEDEF] hover:bg-white/5"
-                  aria-label="Open menu"
-                />
-              }
-            >
-              <Menu className="size-5" />
-            </SheetTrigger>
-
-
-            <SheetContent
-              side="left"
-              className="w-72 border-white/10 bg-[#141418]"
-            >
-
-              <SheetHeader>
-                <SheetTitle className="sr-only">
-                  Menu
-                </SheetTitle>
-              </SheetHeader>
-
-
-              {/* Mobile Links */}
-              <nav className="flex flex-col gap-1 px-4">
-
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setOpen(false)}
-                    className={cn(
-                      "rounded-md px-3 py-2 text-base font-bold tracking-[-0.01em] text-[#EDEDEF] transition-colors hover:bg-white/5 hover:text-white",
-                      pathname === link.href && "underline decoration-1 underline-offset-[10px]"
-                    )}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-
-              </nav>
-
-
-              {/* Mobile Auth Buttons */}
-              <div className="mt-auto flex flex-col gap-3 border-t border-white/10 p-4">
-
-                <Button
-                  variant="ghost"
-                  nativeButton={false}
-                  render={<Link href="/sign-in" />}
-                  className="h-11 w-full border border-white/10 px-0 text-sm text-[#A49FFF] hover:border-white/10 hover:bg-white/5"
-                >
-                  Sign In
-                </Button>
-
-                <Button
-                  nativeButton={false}
-                  render={<Link href="/sign-up" />}
-                  className="h-11 w-full bg-[#5C53FE] text-sm text-white hover:bg-[#6D65FF]"
-                >
-                  Get Started
-                </Button>
-
-              </div>
-
-            </SheetContent>
-
-          </Sheet>
-
-        </div>
-
       </div>
 
-    </div>
-  )
+    </header>
+  );
 }

@@ -35,10 +35,10 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", geist.variable, manrope.variable, spaceMono.variable)}
     >
       <body>
-        <ThemeProvider>
+        
           <Navbar />
           {children}
-        </ThemeProvider>
+       
       </body>
     </html>
   )
