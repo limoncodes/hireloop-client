@@ -24,5 +24,10 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "dependencies": {
+    "@better-auth/mongo-adapter": "^1.7.19",
+    "better-auth": "^1.7.19",
+    "mongodb": "^7.8.0"
+  }
 }
