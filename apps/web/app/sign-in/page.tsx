@@ -23,9 +23,10 @@ import {
 } from "lucide-react";
 
 import { FcGoogle } from "react-icons/fc";
+import { authClient } from "@/lib/auth-client";
 
 const SignIn = () => {
- 
+
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -50,7 +51,7 @@ const SignIn = () => {
       email: "",
       password: "",
       general: "",
-      
+
     };
 
     // Email Validation
@@ -76,10 +77,15 @@ const SignIn = () => {
     setIsLoading(true);
 
     try {
-      console.log("Sign In Data:", {
-        email,
-        remember,
+      
+      const { data } = await authClient.signIn.email({
+        email: email,
+        password: password,
+        rememberMe: remember,
+        callbackURL: "/",
       });
+      console.log(data?.token)
+
 
       // Connect your authentication API here.
       // Example:
@@ -284,11 +290,10 @@ const SignIn = () => {
                       aria-invalid={!!errors.email}
                       aria-describedby={errors.email ? "email-error" : undefined}
                       onChange={() => clearError("email")}
-                      className={`h-12 rounded-xl bg-[#1A1A1F] pl-11 text-sm text-white placeholder:text-gray-500 transition-all focus-visible:ring-2 ${
-                        errors.email
+                      className={`h-12 rounded-xl bg-[#1A1A1F] pl-11 text-sm text-white placeholder:text-gray-500 transition-all focus-visible:ring-2 ${errors.email
                           ? "border-red-500/70 focus-visible:border-red-500 focus-visible:ring-red-500/20"
                           : "border-white/10 focus-visible:border-purple-500/60 focus-visible:ring-purple-500/20"
-                      }`}
+                        }`}
                     />
 
                   </div>
@@ -343,11 +348,10 @@ const SignIn = () => {
                         errors.password ? "password-error" : undefined
                       }
                       onChange={() => clearError("password")}
-                      className={`h-12 rounded-xl bg-[#1A1A1F] pl-11 pr-12 text-sm text-white placeholder:text-gray-500 transition-all focus-visible:ring-2 ${
-                        errors.password
+                      className={`h-12 rounded-xl bg-[#1A1A1F] pl-11 pr-12 text-sm text-white placeholder:text-gray-500 transition-all focus-visible:ring-2 ${errors.password
                           ? "border-red-500/70 focus-visible:border-red-500 focus-visible:ring-red-500/20"
                           : "border-white/10 focus-visible:border-purple-500/60 focus-visible:ring-purple-500/20"
-                      }`}
+                        }`}
                     />
 
                     <Button
@@ -472,7 +476,7 @@ const SignIn = () => {
 
           </div>
 
-          
+
         </section>
 
       </div>

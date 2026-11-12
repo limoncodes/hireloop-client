@@ -18,7 +18,7 @@ const stats = [
 
 function Hero() {
   return (
-    <section className="fixed top-0 left-0 right-0 overflow-x-hidden bg-[#010103]">
+    <section className="relative overflow-hidden bg-[#010103]">
       {/* Ambient glows behind the hero copy */}
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[700px]">
         <div className="absolute -top-56 left-1/2 h-[620px] w-[1100px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(92,83,254,0.22),transparent)] blur-3xl" />
@@ -122,12 +122,12 @@ function Hero() {
             width={1440}
             height={1882}
             sizes="(max-width: 640px) 720px, 1900px"
-            className="pointer-events-none absolute left-1/2 top-[-480px] w-[720px] max-w-none -translate-x-1/2 sm:top-[-1346px] sm:w-[1900px]"
+            className="pointer-events-none absolute left-1/2 top-[-480px] w-[720px] max-w-none -translate-x-1/2 brightness-[0.85] sm:top-[-1346px] sm:w-[1900px]"
             style={{
               maskImage:
-                "linear-gradient(to bottom, transparent 0%, transparent 24%, rgba(0,0,0,0.9) 36%, black 42%, black 60%, rgba(0,0,0,0.45) 74%, rgba(0,0,0,0.15) 88%, transparent 99%)",
+                "linear-gradient(to bottom, transparent 0%, transparent 24%, rgba(0,0,0,0.9) 36%, black 42%, black 50%, rgba(0,0,0,0.35) 63%, rgba(0,0,0,0.1) 78%, transparent 90%)",
               WebkitMaskImage:
-                "linear-gradient(to bottom, transparent 0%, transparent 24%, rgba(0,0,0,0.9) 36%, black 42%, black 60%, rgba(0,0,0,0.45) 74%, rgba(0,0,0,0.15) 88%, transparent 99%)",
+                "linear-gradient(to bottom, transparent 0%, transparent 24%, rgba(0,0,0,0.9) 36%, black 42%, black 50%, rgba(0,0,0,0.35) 63%, rgba(0,0,0,0.1) 78%, transparent 90%)",
             }}
           />
 

@@ -32,10 +32,10 @@ export function Navbar() {
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-50 w-full">
+    <header className="sticky top-0 z-50 w-full px-3 pt-4 sm:px-5">
 
       {/* Main Navbar */}
-      <div className="w-full border-b border-white/[0.07] bg-[#141418] shadow-[0_2px_12px_rgba(0,0,0,0.2)]">
+      <div className="mx-auto w-full max-w-[1440px] rounded-2xl border border-white/[0.07] bg-[#141418] shadow-[0_2px_12px_rgba(0,0,0,0.35)]">
 
         <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between px-4 sm:h-[72px] sm:px-6 lg:px-8">
 
