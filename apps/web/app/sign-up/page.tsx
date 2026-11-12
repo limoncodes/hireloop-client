@@ -3,6 +3,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
@@ -27,13 +28,43 @@ import {
 import { FcGoogle } from "react-icons/fc";
 import { authClient } from "@/lib/auth-client";
 
+// Account types — must match the `role` additional field in lib/auth.ts
+const roles = [
+  {
+    value: "seeker",
+    label: "Seeker",
+    description: "Find jobs",
+    icon: UserRound,
+  },
+  {
+    value: "recruiter",
+    label: "Recruiter",
+    description: "Hire talent",
+    icon: BriefcaseBusiness,
+  },
+  {
+    value: "admin",
+    label: "Admin",
+    description: "Manage platform",
+    icon: ShieldCheck,
+  },
+] as const;
+
+type Role = (typeof roles)[number]["value"];
+
 const SignUp = () => {
+  const router = useRouter();
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  const [role, setRole] = useState<Role>("seeker");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
@@ -101,6 +132,7 @@ const SignUp = () => {
     setPasswordError("");
     setConfirmPasswordError("");
     setTermsError("");
+    setSubmitError("");
 
     if (!isStrongPassword) {
       setPasswordError("Please create a strong password.");
@@ -125,22 +157,29 @@ const SignUp = () => {
       password: formData.get("password") as string,
     };
 
+    setIsSubmitting(true);
+
     const { data: sessionData, error } = await authClient.signUp.email({
       name: data.name,
       email: data.email,
       password: data.password,
+      role, // seeker | recruiter | admin -> stored on the user in MongoDB
       callbackURL: "/",
-      
-      
     });
 
-    
-    console.log(sessionData, error);
+    setIsSubmitting(false);
 
-  
+    if (error) {
+      setSubmitError(
+        error.message || "Something went wrong. Please try again."
+      );
+      return;
+    }
 
     // Never log passwords
     // console.log("Sign Up Data:", data);
+
+    router.push("/");
   };
 
   const handleGoogleSignUp = () => {
@@ -284,6 +323,56 @@ const SignUp = () => {
             <div className="relative px-5 pb-7 sm:px-9 sm:pb-9">
 
               <form onSubmit={handleSignUp} className="space-y-4">
+
+                {/* Account Type */}
+                <div className="space-y-2">
+
+                  <Label className="text-sm font-medium text-gray-300">
+                    I am joining as
+                  </Label>
+
+                  <div
+                    role="radiogroup"
+                    aria-label="Account type"
+                    className="grid grid-cols-3 gap-2"
+                  >
+                    {roles.map(({ value, label, description, icon: Icon }) => {
+                      const selected = role === value;
+
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          onClick={() => setRole(value)}
+                          className={`flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3.5 transition-all duration-200 ${
+                            selected
+                              ? "border-purple-500/60 bg-purple-500/[0.08] text-white shadow-[0_0_0_1px_rgba(139,92,246,0.25),inset_0_1px_0_rgba(255,255,255,0.04)]"
+                              : "border-white/10 bg-[#1A1A1F] text-gray-400 hover:border-white/20 hover:text-white"
+                          }`}
+                        >
+                          <Icon
+                            className={`size-5 transition-colors ${
+                              selected ? "text-purple-400" : "text-gray-500"
+                            }`}
+                          />
+
+                          <span className="text-sm font-semibold">{label}</span>
+
+                          <span
+                            className={`text-[10px] leading-3 ${
+                              selected ? "text-purple-300/80" : "text-gray-600"
+                            }`}
+                          >
+                            {description}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                </div>
 
                 {/* Full Name */}
                 <div className="space-y-2">
@@ -536,12 +625,24 @@ const SignUp = () => {
 
                 </div>
 
+                {/* Submit Error */}
+                {submitError && (
+                  <p
+                    className="flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400"
+                    role="alert"
+                  >
+                    <AlertCircle size={14} className="shrink-0" />
+                    {submitError}
+                  </p>
+                )}
+
                 {/* Submit */}
                 <Button
                   type="submit"
-                  className="group h-12 w-full rounded-xl border-0 bg-gradient-to-r from-[#7955F5] to-[#5938DC] text-sm font-semibold text-white shadow-[0_8px_25px_rgba(101,76,245,0.22)] transition-all duration-300 hover:-translate-y-0.5 hover:from-[#896DFF] hover:to-[#694BEA] hover:shadow-[0_10px_30px_rgba(101,76,245,0.35)]"
+                  disabled={isSubmitting}
+                  className="group h-12 w-full rounded-xl border-0 bg-gradient-to-r from-[#7955F5] to-[#5938DC] text-sm font-semibold text-white shadow-[0_8px_25px_rgba(101,76,245,0.22)] transition-all duration-300 hover:-translate-y-0.5 hover:from-[#896DFF] hover:to-[#694BEA] hover:shadow-[0_10px_30px_rgba(101,76,245,0.35)] disabled:pointer-events-none disabled:opacity-60"
                 >
-                  Create Account
+                  {isSubmitting ? "Creating Account..." : "Create Account"}
 
                   <ArrowRight
                     size={18}
