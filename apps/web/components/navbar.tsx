@@ -19,6 +19,7 @@ import {
 
 import { cn } from "@workspace/ui/lib/utils";
 import logo from "@/app/images/logo.png";
+import {  authClient, useSession } from "@/lib/auth-client";
 
 // Navbar Links
 const navLinks = [
@@ -30,6 +31,13 @@ const navLinks = [
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const { data: userdata } = useSession()
+  const handlesignout = async ()=>{
+    await authClient.signOut()
+
+  }
+  
+
 
   return (
     <header className="sticky top-0 z-50 w-full px-3 pt-4 sm:px-5">
@@ -84,27 +92,41 @@ export function Navbar() {
             {/* Divider */}
             <div className="mx-5 h-6 w-px bg-white/15 xl:mx-6" />
 
-            {/* Auth Buttons */}
-            <div className="flex shrink-0 items-center gap-2">
-
+            {
+              userdata?.user ? <><span>{userdata.user.name}</span> 
               <Button
-                variant="ghost"
-                nativeButton={false}
-                render={<Link href="/sign-in" />}
-                className="h-11 rounded-lg px-3 text-sm font-semibold text-[#A49FFF] hover:bg-white/5 hover:text-white"
-              >
-                Sign In
-              </Button>
+              onClick={handlesignout}
+                    
+                   
+                    className="h-11 rounded-lg bg-[#5C53FE] px-4 text-sm font-bold text-white shadow-[inset_0_3px_10px_rgba(255,255,255,0.2)] transition-colors hover:bg-[#6D65FF]"
+                  >
+                    SignOut
+                  </Button>
 
-              <Button
-                nativeButton={false}
-                render={<Link href="/sign-up" />}
-                className="h-11 rounded-lg bg-[#5C53FE] px-4 text-sm font-bold text-white shadow-[inset_0_3px_10px_rgba(255,255,255,0.2)] transition-colors hover:bg-[#6D65FF]"
-              >
-                Get Started
-              </Button>
+              </> : <>
+                {/* Auth Buttons */}
+                <div className="flex shrink-0 items-center gap-2">
 
-            </div>
+                  <Button
+                    variant="ghost"
+                    nativeButton={false}
+                    render={<Link href="/sign-in" />}
+                    className="h-11 rounded-lg px-3 text-sm font-semibold text-[#A49FFF] hover:bg-white/5 hover:text-white"
+                  >
+                    Sign In
+                  </Button>
+
+                  <Button
+                    nativeButton={false}
+                    render={<Link href="/sign-up" />}
+                    className="h-11 rounded-lg bg-[#5C53FE] px-4 text-sm font-bold text-white shadow-[inset_0_3px_10px_rgba(255,255,255,0.2)] transition-colors hover:bg-[#6D65FF]"
+                  >
+                    Get Started
+                  </Button>
+
+                </div>
+              </>
+            }
 
           </div>
 
@@ -167,7 +189,7 @@ export function Navbar() {
                         className={cn(
                           "rounded-xl px-4 py-3 text-sm font-semibold text-[#EDEDEF] transition-colors hover:bg-white/[0.06] hover:text-white",
                           isActive &&
-                            "bg-purple-500/10 text-[#A49FFF]"
+                          "bg-purple-500/10 text-[#A49FFF]"
                         )}
                       >
                         {link.label}
