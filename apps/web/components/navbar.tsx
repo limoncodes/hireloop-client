@@ -21,12 +21,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import logo from "@/app/images/logo.png";
 import {  authClient, useSession } from "@/lib/auth-client";
 
-// Navbar Links
-const navLinks = [
-  { href: "/jobs", label: "Browse Jobs" },
-  { href: "/companies", label: "Company" },
-  { href: "/pricing", label: "Pricing" },
-];
+
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
@@ -36,7 +31,13 @@ export function Navbar() {
     await authClient.signOut()
 
   }
-  
+  // Navbar Links
+const navLinks = [
+  { href: "/jobs", label: "Browse Jobs" },
+  { href: "/companies", label: "Company" },
+  { href: "/pricing", label: "Pricing" },
+  { href: `/dashboard/${userdata?.user.role || "seeker" }`, label: "Dashboard" },
+];
 
 
   return (
