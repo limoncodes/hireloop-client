@@ -22,10 +22,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@workspace/ui/components/select";
+import { createJobs } from "@/lib/action/jobs";
 
 // ---- Form data (one simple object) ----
 
-type JobForm = {
+export type JobForm = {
     title: string;
     company: string;
     category: string;
@@ -86,10 +87,12 @@ export default function NewJobPage() {
         setForm((prev) => ({ ...prev, [key]: value }));
     };
 
-    const handlePublish = (e: React.FormEvent<HTMLFormElement>) => {
+    const handlePublish = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         // TODO: send to API — for now just show the collected data
-        console.log("Publish Job:", form);
+        const result = await createJobs(form)
+        console.log(result)
+        // console.log("Publish Job:", form);
     };
 
     return (
