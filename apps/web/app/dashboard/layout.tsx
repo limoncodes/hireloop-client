@@ -7,8 +7,10 @@ const Dashbordlayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <SidebarProvider>
       <DashbordSidebar />
-      <main>
-        <SidebarTrigger />
+      <main className="min-w-0 flex-1">
+        <div className="px-4 pt-4 sm:px-6">
+          <SidebarTrigger />
+        </div>
         {children}
       </main>
     </SidebarProvider>
