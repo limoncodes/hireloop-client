@@ -23,23 +23,11 @@ import {
     SelectValue,
 } from "@workspace/ui/components/select";
 import { createJobs } from "@/lib/action/jobs";
+import type { JobForm } from "@/lib/jobs";
+
+export type { JobForm };
 
 // ---- Form data (one simple object) ----
-
-export type JobForm = {
-    title: string;
-    company: string;
-    category: string;
-    jobType: string;
-    remote: boolean;
-    location: string;
-    deadline: string;
-    minSalary: string;
-    maxSalary: string;
-    frequency: string;
-    responsibilities: string;
-    requirements: string;
-};
 
 const initialJob: JobForm = {
     title: "",
