@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
     ArrowRight,
@@ -23,6 +24,7 @@ import {
     SelectValue,
 } from "@workspace/ui/components/select";
 import { createJobs } from "@/lib/action/jobs";
+import { toast } from "@workspace/ui/components/toast";
 import type { JobForm } from "@/lib/jobs";
 
 export type { JobForm };
@@ -69,6 +71,7 @@ const inputClass =
 
 export default function NewJobPage() {
     const [form, setForm] = useState<JobForm>(initialJob);
+    const router = useRouter();
 
     // One tiny setter used by every field
     const set = <K extends keyof JobForm>(key: K, value: JobForm[K]) => {
@@ -77,10 +80,24 @@ export default function NewJobPage() {
 
     const handlePublish = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        // TODO: send to API — for now just show the collected data
-        const result = await createJobs(form)
-        console.log(result)
-        // console.log("Publish Job:", form);
+        try {
+            // Only the user's form fields are sent — the backend adds
+            // defaults like status and applicants
+            await createJobs(form);
+            toast.add({
+                title: "Job published",
+                description: `${form.title} is now live on your board`,
+                type: "success",
+            });
+            // Go back to Manage Jobs — the list fetches fresh there
+            router.push("/dashboard/recruiter/jobs");
+        } catch {
+            toast.add({
+                title: "Could not publish",
+                description: "Something went wrong — is the backend running?",
+                type: "error",
+            });
+        }
     };
 
     return (

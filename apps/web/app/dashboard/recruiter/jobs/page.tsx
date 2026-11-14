@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Briefcase,
@@ -34,6 +34,7 @@ import { cn } from "@workspace/ui/lib/utils";
 // Same shape the "Post a New Job" form collects (apps/web/lib/jobs.ts)
 import type { JobForm } from "@/lib/jobs";
 import { getJobs } from "@/lib/api/jobs";
+import { DeletejobDialog } from "@/app/components/DeletejobDialog";
 
 // ---- Data ----
 
@@ -60,18 +61,9 @@ const categoryMeta: Record<string, { icon: LucideIcon; text: string; bg: string 
 const metaFor = (category: string) =>
   categoryMeta[category] ?? { icon: Briefcase, text: "text-gray-400", bg: "bg-gray-500/10" };
 
-// "per hour" -> "/ hr", "per day" -> "/ day", "per week" -> "/ wk",
-// "per month" -> "/ mo", "per year" -> "/ yr"
-const frequencyLabels: Record<string, string> = {
-  "per hour": "/ hr",
-  "per day": "/ day",
-  "per week": "/ wk",
-  "per month": "/ mo",
-  "per year": "/ yr",
-};
-
+// "per hour" -> "/ hr", "per year" -> "/ yr"
 const frequencyShort = (frequency: string) =>
-  frequencyLabels[frequency] ?? `/${frequency.replace("per ", "")}`;
+  frequency.includes("hour") ? "/ hr" : "/ yr";
 
 const salaryLabel = (job: JobRow) =>
   `€${job.minSalary} – €${job.maxSalary} ${frequencyShort(job.frequency)}`;
@@ -87,6 +79,42 @@ const dateLabel = (iso: string) =>
   });
 
 // ---- Shared pieces (used by both the mobile cards and the table) ----
+
+// A MongoDB ObjectId hides its creation time in the first 8 hex characters —
+// so "posted how long ago" can be computed from the id itself, no extra field needed
+const postedDateFromId = (id: string) => new Date(parseInt(id.slice(0, 8), 16) * 1000);
+
+// Date -> "just now" | "5m ago" | "3h ago" | "2d ago" | "1w ago" | "2mo ago" | "1y ago"
+const timeAgo = (date: Date) => {
+  const sec = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (sec < 60) return "just now";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}d ago`;
+  const week = Math.floor(day / 7);
+  if (week < 5) return `${week}w ago`;
+  const month = Math.floor(day / 30);
+  if (month < 12) return `${month}mo ago`;
+  return `${Math.floor(day / 365)}y ago`;
+};
+
+// Deadline countdown -> "17d left" | "Last day" | "Closed"
+const daysLeftLabel = (iso: string) => {
+  const end = new Date(`${iso}T23:59:59`).getTime();
+  const diff = Math.ceil((end - Date.now()) / 86400000);
+  if (diff < 0) return "Closed";
+  if (diff === 0) return "Last day";
+  return `${diff}d left`;
+};
+
+// Dynamic status: "Expired" when the DB says so OR the deadline date has passed
+const effectiveStatus = (job: JobRow): JobStatus =>
+  job.status === "Expired" || new Date(`${job.deadline}T23:59:59`) < new Date()
+    ? "Expired"
+    : "Active";
 
 function StatusBadge({ status }: { status: JobStatus }) {
   const expired = status === "Expired";
@@ -111,7 +139,15 @@ function StatusBadge({ status }: { status: JobStatus }) {
   );
 }
 
-function JobActions({ job, className }: { job: JobRow; className?: string }) {
+function JobActions({
+  job,
+  className,
+  onDeleted,
+}: {
+  job: JobRow;
+  className?: string;
+  onDeleted?: () => void;
+}) {
   return (
     <div className={cn("flex items-center gap-1.5", className)}>
       <Button
@@ -123,14 +159,7 @@ function JobActions({ job, className }: { job: JobRow; className?: string }) {
         Update
       </Button>
 
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label={`Delete ${job.title}`}
-        className="size-8 rounded-lg text-gray-500 hover:bg-red-500/10 hover:text-red-400"
-      >
-        <Trash2 className="size-4" />
-      </Button>
+      <DeletejobDialog job={job} onDeleted={onDeleted} />
 
       <Button
         variant="ghost"
@@ -146,10 +175,10 @@ function JobActions({ job, className }: { job: JobRow; className?: string }) {
 
 // ---- Mobile card (shown below md) ----
 
-function JobCard({ job }: { job: JobRow }) {
+function JobCard({ job, onDeleted }: { job: JobRow; onDeleted?: () => void }) {
   const meta = metaFor(job.category);
   const Icon = meta.icon;
-  const expired = job.status === "Expired";
+  const expired = effectiveStatus(job) === "Expired";
 
   return (
     <div className="rounded-2xl border border-white/[0.07] bg-[#111114] p-4">
@@ -173,7 +202,7 @@ function JobCard({ job }: { job: JobRow }) {
           </div>
         </div>
 
-        <StatusBadge status={job.status} />
+        <StatusBadge status={effectiveStatus(job)} />
       </div>
 
       {/* Details */}
@@ -209,14 +238,14 @@ function JobCard({ job }: { job: JobRow }) {
             )}
           >
             <CalendarDays className="size-3.5 shrink-0 text-gray-500" />
-            {dateLabel(job.deadline)}
+            {dateLabel(job.deadline)} ({daysLeftLabel(job.deadline)})
           </span>
         </div>
       </div>
 
       {/* Actions */}
       <div className="mt-4 border-t border-white/[0.06] pt-3">
-        <JobActions job={job} />
+        <JobActions job={job} onDeleted={onDeleted} />
       </div>
     </div>
   );
@@ -228,33 +257,31 @@ export default function ManageJobsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState("");
 
-  useEffect(() => {
-    let cancelled = false;
+  // Reusable so the delete dialog can refresh the list after deleting
+  const loadJobs = useCallback(() => {
+    setIsLoading(true);
 
     getJobs()
       .then((data) => {
-        if (cancelled) return;
-
         if (Array.isArray(data)) {
           setJobs(data as JobRow[]);
+          setApiError("");
         } else {
           setApiError("Unexpected response from the jobs API.");
         }
       })
       .catch((err) => {
         // Backend not running / network error / bad status
-        if (!cancelled) {
-          setApiError(err?.message || "Failed to load jobs from the API.");
-        }
+        setApiError(err?.message || "Failed to load jobs from the API.");
       })
       .finally(() => {
-        if (!cancelled) setIsLoading(false);
+        setIsLoading(false);
       });
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
+
+  useEffect(() => {
+    loadJobs();
+  }, [loadJobs]);
 
   return (
     <div className="mx-auto w-full container px-4 py-6 sm:px-6">
@@ -327,7 +354,7 @@ export default function ManageJobsPage() {
       {/* Mobile/tablet — stacked cards (below lg) */}
       <div className="mt-6 space-y-4 lg:hidden">
         {jobs.map((job) => (
-          <JobCard key={job._id} job={job} />
+          <JobCard key={job._id} job={job} onDeleted={loadJobs} />
         ))}
       </div>
 
@@ -368,7 +395,7 @@ export default function ManageJobsPage() {
               {jobs.map((job) => {
                 const meta = metaFor(job.category);
                 const Icon = meta.icon;
-                const expired = job.status === "Expired";
+                const expired = effectiveStatus(job) === "Expired";
 
                 return (
                   <TableRow
@@ -431,7 +458,7 @@ export default function ManageJobsPage() {
 
                     {/* Status */}
                     <TableCell className="px-3 py-4">
-                      <StatusBadge status={job.status} />
+                      <StatusBadge status={effectiveStatus(job)} />
                     </TableCell>
 
                     {/* Deadline (lg+) */}
@@ -445,13 +472,14 @@ export default function ManageJobsPage() {
                         {dateLabel(job.deadline)}
                       </p>
                       <p className="mt-0.5 text-xs text-gray-600">
-                        {job.postedAgo}
+                        {timeAgo(postedDateFromId(job._id))} ·{" "}
+                        {daysLeftLabel(job.deadline)}
                       </p>
                     </TableCell>
 
                     {/* Actions */}
                     <TableCell className="px-3 py-4 sm:px-4">
-                      <JobActions job={job} className="justify-end" />
+                      <JobActions job={job} onDeleted={loadJobs} className="justify-end" />
                     </TableCell>
                   </TableRow>
                 );
