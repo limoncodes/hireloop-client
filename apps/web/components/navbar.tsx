@@ -33,7 +33,7 @@ export function Navbar() {
   }
   // Navbar Links
 const navLinks = [
-  { href: "/jobs", label: "Browse Jobs" },
+  { href: "/browsejobs", label: "Browse Jobs" },
   { href: "/companies", label: "Company" },
   { href: "/pricing", label: "Pricing" },
   { href: `/dashboard/${userdata?.user.role || "seeker" }`, label: "Dashboard" },
