@@ -5,12 +5,19 @@ import { Search } from "lucide-react";
 
 import { Button } from "@workspace/ui/components/button";
 import { cn } from "@workspace/ui/lib/utils";
+import { useRouter } from "next/navigation";
 
-export function SearchBar({ className }: { className?: string }) {
-  const [query, setQuery] = useState("");
+export function SearchBar({ className, initialValue = "" }: { className?: string; initialValue?: string }) {
+  const [query, setQuery] = useState(initialValue);
 
   // TODO: implement — use `query` to filter/fetch the jobs
-  const handleSearch = () => {};
+  const router = useRouter()
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    params.set('search',query)
+    router.push(`/browsejobs?${params.toString()}`)
+    
+  };
 
   return (
     <div

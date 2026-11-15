@@ -114,3 +114,11 @@ export const formatCount = (count: number) =>
   count >= 1000
     ? `${(count / 1000).toFixed(1).replace(/\.0$/, "")}k`
     : String(count);
+
+// Salaries are stored as strings ("50", "90k") — convert to a real number
+// so they can be sorted ("90k" -> 90000)
+export const salaryValue = (value: string) => {
+  const num = parseFloat(value);
+  if (Number.isNaN(num)) return 0;
+  return value.toLowerCase().includes("k") ? num * 1000 : num;
+};

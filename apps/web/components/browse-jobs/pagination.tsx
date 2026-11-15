@@ -4,11 +4,19 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "@workspace/ui/lib/utils";
 
-export function BrowsePagination({ className }: { className?: string }) {
-  const pages = [1, 2, 3];
-
-  // TODO: implement — real page numbers + fetch jobs for the selected page
-  const handlePageChange = () => {};
+export function BrowsePagination({
+  page,
+  totalPages,
+  onPageChange,
+  className,
+}: {
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  className?: string;
+}) {
+  // 1..totalPages (totalPages is small here — one button per page)
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
 
   return (
     <nav
@@ -17,44 +25,36 @@ export function BrowsePagination({ className }: { className?: string }) {
     >
       <button
         type="button"
-        onClick={handlePageChange}
+        onClick={() => onPageChange(page - 1)}
+        disabled={page === 1}
         aria-label="Previous page"
-        className="flex size-9 items-center justify-center rounded-lg border border-white/10 text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
+        className="flex size-9 items-center justify-center rounded-lg border border-white/10 text-gray-400 transition-colors hover:bg-white/5 hover:text-white disabled:pointer-events-none disabled:opacity-40"
       >
         <ChevronLeft className="size-4" />
       </button>
 
-      {pages.map((page) => (
+      {pages.map((p) => (
         <button
-          key={page}
+          key={p}
           type="button"
-          onClick={handlePageChange}
+          onClick={() => onPageChange(p)}
           className={cn(
             "size-9 rounded-lg border text-sm font-semibold transition-colors",
-            page === 1
+            p === page
               ? "border-transparent bg-[#5C53FE] text-white"
               : "border-white/10 text-gray-400 hover:bg-white/5 hover:text-white"
           )}
         >
-          {page}
+          {p}
         </button>
       ))}
 
-      <span className="px-1 text-sm text-gray-600">…</span>
-
       <button
         type="button"
-        onClick={handlePageChange}
-        className="size-9 rounded-lg border border-white/10 text-sm font-semibold text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
-      >
-        42
-      </button>
-
-      <button
-        type="button"
-        onClick={handlePageChange}
+        onClick={() => onPageChange(page + 1)}
+        disabled={page === totalPages}
         aria-label="Next page"
-        className="flex size-9 items-center justify-center rounded-lg border border-white/10 text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
+        className="flex size-9 items-center justify-center rounded-lg border border-white/10 text-gray-400 transition-colors hover:bg-white/5 hover:text-white disabled:pointer-events-none disabled:opacity-40"
       >
         <ChevronRight className="size-4" />
       </button>

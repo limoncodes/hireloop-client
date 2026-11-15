@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -21,28 +23,69 @@ import { BrowseJobCard } from "@/components/browse-jobs/job-card";
 import { BrowsePagination } from "@/components/browse-jobs/pagination";
 import {
   type JobRow,
-  JOB_TYPES,
-  JOB_CATEGORIES,
+  postedDateFromId,
+  salaryValue,
 } from "@/lib/jobs";
 import { getJobs } from "@/lib/api/jobs";
 
 const SORT_OPTIONS = ["Most Recent", "Highest Salary", "Nearest Deadline"];
 
+// useSearchParams() needs a Suspense boundary when the page is
+// statically prerendered — so the real page lives in this inner component
 export default function BrowseJobsPage() {
+  return (
+    <Suspense
+      fallback={
+        <p className="mx-auto w-full max-w-[1280px] px-4 py-10 text-sm text-gray-500">
+          Loading…
+        </p>
+      }
+    >
+      <BrowseJobsContent />
+    </Suspense>
+  );
+}
+
+// Jobs shown per page (pagination)
+const JOBS_PER_PAGE = 10;
+
+function BrowseJobsContent() {
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState("");
 
-  // Filter / sort UI state — the actual fetching & filtering is TODO (yours)
-  // Single-select: one job type + one category at a time (null = nothing)
-  const [selectedJobType, setSelectedJobType] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  // Unfiltered copy of the jobs — used only for the sidebar options,
+  // so filters and counts never disappear while a filter is active
+  const [allJobs, setAllJobs] = useState<JobRow[]>([]);
+
+  const router = useRouter();
+
+  // The URL (?search=&jobType=&category=&remote=) is the single source of
+  // truth — the SearchBar and the filter handlers only push the URL, and
+  // every change here re-fetches the jobs
+  const searchParams = useSearchParams();
+  const search = (searchParams.get("search") ?? "").trim();
+  const jobType = searchParams.get("jobType");
+  const category = searchParams.get("category");
+  const remote = searchParams.get("remote");
+
+  // Sort stays local UI state (not in the URL yet)
   const [sortBy, setSortBy] = useState(SORT_OPTIONS[0]);
+
+  // Pagination — current page (JOBS_PER_PAGE jobs per page)
+  const [page, setPage] = useState(1);
 
   const loadJobs = useCallback(() => {
     setIsLoading(true);
 
-    getJobs()
+    // Build the API query from every active URL param
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (jobType) params.set("jobType", jobType);
+    if (category) params.set("category", category);
+    if (remote) params.set("remote", remote);
+
+    getJobs(params.toString())
       .then((data) => {
         if (Array.isArray(data)) {
           setJobs(data as JobRow[]);
@@ -57,55 +100,156 @@ export default function BrowseJobsPage() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, []);
+  }, [search, jobType, category, remote]);
 
   useEffect(() => {
     loadJobs();
   }, [loadJobs]);
 
-  // Single-select: clicking another option replaces it, clicking the
-  // same option deselects it.
-  // TODO: implement — use `selectedJobType` to fetch/filter the jobs
+  // One unfiltered fetch for the sidebar options (once on mount)
+  useEffect(() => {
+    getJobs()
+      .then((data) => {
+        if (Array.isArray(data)) setAllJobs(data as JobRow[]);
+      })
+      .catch(() => {
+        // the main fetch already shows the error banner
+      });
+  }, []);
+
+  // Any filter change -> go back to page 1
+  useEffect(() => {
+    setPage(1);
+  }, [search, jobType, category, remote, sortBy]);
+
+  // Single-select: clicking another option replaces it, clicking the same
+  // option deselects it. Existing params (search etc.) are preserved.
+  const updateParam = (key: string, value: string | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+    router.push(`/browsejobs?${params.toString()}`);
+  };
+
   const handleJobTypeSelect = (label: string) => {
-    setSelectedJobType((prev) => (prev === label ? null : label));
+    updateParam("jobType", jobType === label ? null : label);
   };
 
-  // TODO: implement — use `selectedCategory` to fetch/filter the jobs
   const handleCategorySelect = (label: string) => {
-    setSelectedCategory((prev) => (prev === label ? null : label));
+    updateParam("category", category === label ? null : label);
   };
 
-  // Sort change — only updates the dropdown.
-  // TODO: implement — sort `jobs` using `sortBy`
+  const handleRemoteSelect = (label: string) => {
+    // "Remote" -> remote=true, "On-site" -> remote=false (Mongo boolean)
+    const wanted = label === "Remote" ? "true" : "false";
+    updateParam("remote", remote === wanted ? null : wanted);
+  };
+
+  // Sort change — sorts the loaded jobs client-side (no extra API call)
   const handleSortChange = (value: string) => {
     setSortBy(value);
   };
 
-  // Counts shown next to each filter option (from the loaded jobs)
-  const jobTypeOptions: FilterOption[] = JOB_TYPES.map((type) => ({
+  // The jobs sorted by the selected "Sort by" option
+  const sortedJobs = useMemo(() => {
+    const copy = [...jobs];
+
+    switch (sortBy) {
+      case "Highest Salary":
+        // biggest max salary first ("90k" -> 90000 before comparing)
+        return copy.sort(
+          (a, b) => salaryValue(b.maxSalary) - salaryValue(a.maxSalary)
+        );
+      case "Nearest Deadline":
+        // soonest deadline first
+        return copy.sort(
+          (a, b) =>
+            new Date(`${a.deadline}T23:59:59`).getTime() -
+            new Date(`${b.deadline}T23:59:59`).getTime()
+        );
+      default:
+        // Most Recent — newest ObjectId (= newest post) first
+        return copy.sort(
+          (a, b) =>
+            postedDateFromId(b._id).getTime() - postedDateFromId(a._id).getTime()
+        );
+    }
+  }, [jobs, sortBy]);
+
+  // Filter options are derived from the unfiltered snapshot, so the
+  // labels + counts always match what the API really has — and they
+  // stay visible even while a filter is active
+  const uniqueSorted = (values: string[]) => [...new Set(values)].sort();
+
+  const jobTypeOptions: FilterOption[] = uniqueSorted(
+    allJobs.map((job) => job.jobType)
+  ).map((type) => ({
     label: type,
-    count: jobs.filter((job) => job.jobType === type).length,
+    count: allJobs.filter((job) => job.jobType === type).length,
   }));
 
-  const categoryOptions: FilterOption[] = JOB_CATEGORIES.map((category) => ({
-    label: category,
-    count: jobs.filter((job) => job.category === category).length,
+  const categoryOptions: FilterOption[] = uniqueSorted(
+    allJobs.map((job) => job.category)
+  ).map((cat) => ({
+    label: cat,
+    count: allJobs.filter((job) => job.category === cat).length,
   }));
+
+  // Remote section derived from the Mongo boolean field — sections with no
+  // jobs on one side are simply not shown
+  const remoteCount = allJobs.filter((job) => job.remote).length;
+  const remoteOptions: FilterOption[] = [
+    ...(remoteCount > 0
+      ? [{ label: "Remote", count: remoteCount }]
+      : []),
+    ...(allJobs.length - remoteCount > 0
+      ? [{ label: "On-site", count: allJobs.length - remoteCount }]
+      : []),
+  ];
+
+  // Only the current page's slice of the sorted jobs is shown
+  const totalPages = Math.max(1, Math.ceil(jobs.length / JOBS_PER_PAGE));
+  const safePage = Math.min(page, totalPages);
+  const visibleJobs = sortedJobs.slice(
+    (safePage - 1) * JOBS_PER_PAGE,
+    safePage * JOBS_PER_PAGE
+  );
 
   return (
     <div className="mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-6">
+      {/* Breadcrumb */}
+      <nav
+        aria-label="Breadcrumb"
+        className="flex items-center gap-2 text-sm"
+      >
+        <Link
+          href="/"
+          className="text-gray-500 transition-colors hover:text-white"
+        >
+          Public
+        </Link>
+        <span className="text-gray-700">/</span>
+        <span className="font-medium text-white">Browse Jobs</span>
+      </nav>
+
       {/* Search */}
-      <SearchBar />
+      <SearchBar initialValue={search} />
 
       <div className="mt-6 flex flex-col gap-6 lg:flex-row">
         {/* Filters sidebar */}
         <FilterSidebar
           jobTypes={jobTypeOptions}
           categories={categoryOptions}
-          selectedJobType={selectedJobType}
-          selectedCategory={selectedCategory}
+          remoteOptions={remoteOptions}
+          selectedJobType={jobType}
+          selectedCategory={category}
+          selectedRemote={remote === "true" ? "Remote" : remote === "false" ? "On-site" : null}
           onJobTypeSelect={handleJobTypeSelect}
           onCategorySelect={handleCategorySelect}
+          onRemoteSelect={handleRemoteSelect}
           className="w-full shrink-0 lg:w-60"
         />
 
@@ -163,13 +307,21 @@ export default function BrowseJobsPage() {
           {/* Job cards */}
           {!isLoading && !apiError && jobs.length > 0 && (
             <div className="mt-5 space-y-4">
-              {jobs.map((job) => (
+              {visibleJobs.map((job) => (
                 <BrowseJobCard key={job._id} job={job} />
               ))}
             </div>
           )}
 
-          <BrowsePagination className="mt-8" />
+          {/* Pagination — only when there is more than one page */}
+          {!isLoading && !apiError && totalPages > 1 && (
+            <BrowsePagination
+              page={safePage}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              className="mt-8"
+            />
+          )}
         </section>
       </div>
     </div>

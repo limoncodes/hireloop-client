@@ -36,19 +36,25 @@ function FilterRow({
 export function FilterSidebar({
   jobTypes,
   categories,
+  remoteOptions,
   selectedJobType,
   selectedCategory,
+  selectedRemote,
   onJobTypeSelect,
   onCategorySelect,
+  onRemoteSelect,
   className,
 }: {
   jobTypes: FilterOption[];
   categories: FilterOption[];
-  // Single-select — only one job type / one category at a time
+  remoteOptions: FilterOption[];
+  // Single-select — only one option at a time per section
   selectedJobType: string | null;
   selectedCategory: string | null;
+  selectedRemote: string | null;
   onJobTypeSelect: (label: string) => void;
   onCategorySelect: (label: string) => void;
+  onRemoteSelect: (label: string) => void;
   className?: string;
 }) {
   return (
@@ -81,6 +87,20 @@ export function FilterSidebar({
             option={option}
             checked={selectedCategory === option.label}
             onSelect={onCategorySelect}
+          />
+        ))}
+      </div>
+
+      <p className="mt-6 text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
+        Remote
+      </p>
+      <div className="mt-3 space-y-3">
+        {remoteOptions.map((option) => (
+          <FilterRow
+            key={option.label}
+            option={option}
+            checked={selectedRemote === option.label}
+            onSelect={onRemoteSelect}
           />
         ))}
       </div>
