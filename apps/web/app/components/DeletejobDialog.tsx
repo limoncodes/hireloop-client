@@ -13,7 +13,7 @@ import {
   AlertDialogTrigger,
 } from "@workspace/ui/components/alert-dialog"
 import { Button } from "@workspace/ui/components/button"
-import { JobRow } from "../dashboard/recruiter/jobs/page"
+import { JobRow } from "@/lib/jobs"
 import { deletJob } from "@/lib/action/jobs"
 
 export function DeletejobDialog({ job, onDeleted }: { job: JobRow; onDeleted?: () => void }) {

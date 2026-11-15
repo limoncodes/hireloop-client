@@ -1,4 +1,4 @@
-import { JobRow } from "@/app/dashboard/recruiter/jobs/page";
+import { JobRow } from "@/lib/jobs";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 

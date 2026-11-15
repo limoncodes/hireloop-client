@@ -25,7 +25,11 @@ import {
 } from "@workspace/ui/components/select";
 import { createJobs } from "@/lib/action/jobs";
 import { toast } from "@workspace/ui/components/toast";
-import type { JobForm } from "@/lib/jobs";
+import {
+    type JobForm,
+    JOB_TYPES,
+    JOB_CATEGORIES,
+} from "@/lib/jobs";
 
 export type { JobForm };
 
@@ -46,16 +50,9 @@ const initialJob: JobForm = {
     requirements: "",
 };
 
-const jobTypes = ["Full-time", "Part-time", "Contract", "Internship"];
+const jobTypes = JOB_TYPES;
 
-const categories = [
-    "Engineering & Tech",
-    "Design & Creative",
-    "Marketing & Sales",
-    "Finance & Accounting",
-    "Customer Support",
-    "Human Resources",
-];
+const categories = JOB_CATEGORIES;
 
 const frequencies = [
     "per hour",

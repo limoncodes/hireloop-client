@@ -31,23 +31,22 @@ import {
 } from "@workspace/ui/components/table";
 import { cn } from "@workspace/ui/lib/utils";
 
-// Same shape the "Post a New Job" form collects (apps/web/lib/jobs.ts)
-import type { JobForm } from "@/lib/jobs";
-import { getJobs } from "@/lib/api/jobs";
 import { DeletejobDialog } from "@/app/components/DeletejobDialog";
 
-// ---- Data ----
-
-type JobStatus = "Active" | "Expired";
-
-export type JobRow = JobForm & {
-  _id: string;
-  applicants: number;
-  status: JobStatus;
-  postedAgo: string;
-};
-
-// ---- Small view helpers ----
+// Job types + display helpers live in apps/web/lib/jobs.ts so the
+// Browse Jobs page can reuse the exact same logic
+import {
+  type JobStatus,
+  type JobRow,
+  dateLabel,
+  daysLeftLabel,
+  effectiveStatus,
+  locationLabel,
+  postedDateFromId,
+  salaryLabel,
+  timeAgo,
+} from "@/lib/jobs";
+import { getJobs } from "@/lib/api/jobs";
 
 // Category -> icon + colors (used for the tile and the dept tag)
 const categoryMeta: Record<string, { icon: LucideIcon; text: string; bg: string }> = {
@@ -61,60 +60,7 @@ const categoryMeta: Record<string, { icon: LucideIcon; text: string; bg: string 
 const metaFor = (category: string) =>
   categoryMeta[category] ?? { icon: Briefcase, text: "text-gray-400", bg: "bg-gray-500/10" };
 
-// "per hour" -> "/ hr", "per year" -> "/ yr"
-const frequencyShort = (frequency: string) =>
-  frequency.includes("hour") ? "/ hr" : "/ yr";
-
-const salaryLabel = (job: JobRow) =>
-  `€${job.minSalary} – €${job.maxSalary} ${frequencyShort(job.frequency)}`;
-
-const locationLabel = (job: JobRow) =>
-  job.remote ? `Remote (${job.location})` : job.location;
-
-const dateLabel = (iso: string) =>
-  new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-
 // ---- Shared pieces (used by both the mobile cards and the table) ----
-
-// A MongoDB ObjectId hides its creation time in the first 8 hex characters —
-// so "posted how long ago" can be computed from the id itself, no extra field needed
-const postedDateFromId = (id: string) => new Date(parseInt(id.slice(0, 8), 16) * 1000);
-
-// Date -> "just now" | "5m ago" | "3h ago" | "2d ago" | "1w ago" | "2mo ago" | "1y ago"
-const timeAgo = (date: Date) => {
-  const sec = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (sec < 60) return "just now";
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  const day = Math.floor(hr / 24);
-  if (day < 7) return `${day}d ago`;
-  const week = Math.floor(day / 7);
-  if (week < 5) return `${week}w ago`;
-  const month = Math.floor(day / 30);
-  if (month < 12) return `${month}mo ago`;
-  return `${Math.floor(day / 365)}y ago`;
-};
-
-// Deadline countdown -> "17d left" | "Last day" | "Closed"
-const daysLeftLabel = (iso: string) => {
-  const end = new Date(`${iso}T23:59:59`).getTime();
-  const diff = Math.ceil((end - Date.now()) / 86400000);
-  if (diff < 0) return "Closed";
-  if (diff === 0) return "Last day";
-  return `${diff}d left`;
-};
-
-// Dynamic status: "Expired" when the DB says so OR the deadline date has passed
-const effectiveStatus = (job: JobRow): JobStatus =>
-  job.status === "Expired" || new Date(`${job.deadline}T23:59:59`) < new Date()
-    ? "Expired"
-    : "Active";
 
 function StatusBadge({ status }: { status: JobStatus }) {
   const expired = status === "Expired";
