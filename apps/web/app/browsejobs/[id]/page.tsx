@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   BadgeCheck,
   Bookmark,
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { Spinner } from "@workspace/ui/components/spinner";
+import { toast } from "@workspace/ui/components/toast";
 import { getjobsByid } from "@/lib/api/jobs";
 import {
   type JobRow,
@@ -22,6 +23,8 @@ import {
   locationLabel,
   salaryLabel,
 } from "@/lib/jobs";
+import { useSession } from "@/lib/auth-client";
+import { applyTojob } from "@/lib/action/jobs";
 
 // "Develop REST APIs, manage databases, optimize server performance."
 // -> ["Develop REST APIs", "Manage databases", "Optimize server performance"]
@@ -98,9 +101,64 @@ function JobDetailsContent() {
       })
       .finally(() => setIsLoading(false));
   }, [id]);
+  const {data:session}= useSession()
 
-  // TODO: implement — apply flow for this job
-  const handleApply = () => {};
+  // console.log(session?.user)
+  const user = session?.user
+
+  const router = useRouter()
+
+  // Apply flow — guests are sent to sign-in, seekers get toasts,
+  // recruiters are told they cannot apply
+  const handleApply = async () => {
+    if (!user) {
+      router.push(`/sign-in?redirectTo=/browsejobs/${job?._id}`);
+      return;
+    }
+
+    if (user.role !== "seeker") {
+      toast.add({
+        title: "Cannot apply",
+        description: "Only job seeker accounts can apply to jobs.",
+        type: "info",
+      });
+      return;
+    }
+
+    if (!job) return;
+
+    try {
+      const result = await applyTojob({
+        jobId: job._id,
+        userId: user.id,
+        email: user.email,
+        jobTitle: job.title,
+        companyName: job.company,
+      });
+
+      if (result.insertedId) {
+        toast.add({
+          title: "Application submitted",
+          description: `You applied for ${job.title} at ${job.company}`,
+          type: "success",
+        });
+        // Relative URL — the absolute localhost one breaks in production
+        router.push("/browsejobs");
+      } else {
+        throw new Error("The application could not be saved.");
+      }
+    } catch (err) {
+      toast.add({
+        title: "Could not apply",
+        description:
+          err instanceof Error && err.message
+            ? err.message
+            : "Something went wrong — please try again.",
+        type: "error",
+      });
+    }
+  };
+
   // TODO: implement — save/bookmark this job
   const handleBookmark = () => {};
 

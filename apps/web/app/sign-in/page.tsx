@@ -24,8 +24,12 @@ import {
 
 import { FcGoogle } from "react-icons/fc";
 import { authClient } from "@/lib/auth-client";
+import { useSearchParams } from "next/navigation";
 
 const SignIn = () => {
+  const searchparams = useSearchParams()
+  const redirectTo = searchparams.get("redirectTo")?? "/"
+
 
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
@@ -37,6 +41,7 @@ const SignIn = () => {
     password: "",
     general: "",
   });
+
 
   // Sign In Handler
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
@@ -82,26 +87,10 @@ const SignIn = () => {
         email: email,
         password: password,
         rememberMe: remember,
-        callbackURL: "/",
+        callbackURL: redirectTo,
       });
       console.log(data?.token)
 
-
-      // Connect your authentication API here.
-      // Example:
-      // const response = await fetch("/api/auth/login", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({ email, password, remember }),
-      // });
-
-      // Example backend error:
-      // if (!response.ok) {
-      //   setErrors((prev) => ({
-      //     ...prev,
-      //     general: "Invalid email or password. Please try again.",
-      //   }));
-      // }
 
     } catch {
       setErrors((prev) => ({

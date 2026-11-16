@@ -18,6 +18,17 @@ export type JobForm = {
 
 export type JobStatus = "Active" | "Expired";
 
+// One job application saved to the backend's "applicants" collection
+// (_id exists only after the backend inserts it)
+export type ApplicationType = {
+  _id: string;
+  jobId: string;
+  userId: string;
+  email: string;
+  jobTitle: string;
+  companyName: string;
+};
+
 // Options shown in the "Post a New Job" form and the Browse Jobs filters
 export const JOB_TYPES = ["Full-time", "Part-time", "Contract", "Internship"];
 
