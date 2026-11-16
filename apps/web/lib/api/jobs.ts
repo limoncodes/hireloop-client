@@ -12,3 +12,13 @@ export const getJobs = async (query = ''):Promise<JobRow[]> => {
 
   return res.json();
 };
+export const getjobsByid = async (jobid: string): Promise<JobRow> => {
+  const res = await fetch(`${BASE_URL}/jobs/${jobid}`);
+
+  if (!res.ok) {
+    throw new Error(`Failed to load job (${res.status})`);
+  }
+
+  return res.json();
+};
+
