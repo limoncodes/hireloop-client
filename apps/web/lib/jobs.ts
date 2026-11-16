@@ -29,6 +29,13 @@ export type ApplicationType = {
   companyName: string;
 };
 
+// The application document as returned by GET /applicants — status is
+// optional because the collection doesn't set it yet (rows default to
+// "Applied" in the UI until the backend grows the field)
+export type ApplicationRow = ApplicationType & {
+  status?: string;
+};
+
 // Options shown in the "Post a New Job" form and the Browse Jobs filters
 export const JOB_TYPES = ["Full-time", "Part-time", "Contract", "Internship"];
 

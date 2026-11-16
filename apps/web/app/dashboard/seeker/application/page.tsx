@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Download,
@@ -11,49 +11,19 @@ import {
   Users,
 } from "lucide-react";
 
+import { Spinner } from "@workspace/ui/components/spinner";
+import { getApplications } from "@/lib/api/applications";
+import { getJobs } from "@/lib/api/jobs";
+import { useSession } from "@/lib/auth-client";
+import {
+  type ApplicationRow,
+  type JobRow,
+  postedDateFromId,
+  salaryLabel,
+  timeAgo,
+} from "@/lib/jobs";
 import { cn } from "@workspace/ui/lib/utils";
 import { BrowsePagination } from "@/components/browse-jobs/pagination";
-
-// ------------------------------------------------------------------
-// DUMMY DATA — learning mode 🙂
-// পরে এটা real API দিয়ে replace করবেন:
-//   const applications = await getApplications(user.id)  ← আপনি লিখবেন
-// ------------------------------------------------------------------
-type DummyApplication = {
-  id: number;
-  title: string;
-  meta: string; // "Full-time • Remote"
-  company: string;
-  appliedAgo: string;
-  status: "Applied" | "Review" | "Shortlisted" | "Rejected" | "Offered";
-};
-
-const DUMMY_APPLICATIONS: DummyApplication[] = [
-  { id: 1, title: "Senior Frontend Engineer", meta: "Full-time • Remote", company: "Stark Industries", appliedAgo: "2 hours ago", status: "Applied" },
-  { id: 2, title: "Product Designer", meta: "Contract • Hybrid", company: "Cyberdyne Systems", appliedAgo: "1 day ago", status: "Review" },
-  { id: 3, title: "Lead Data Scientist", meta: "Full-time • On-site", company: "Wayne Enterprises", appliedAgo: "4 days ago", status: "Shortlisted" },
-  { id: 4, title: "Cloud Architect", meta: "Full-time • Remote", company: "Oscorp Tech", appliedAgo: "1 week ago", status: "Rejected" },
-  { id: 5, title: "AI Research Engineer", meta: "Full-time • Hybrid", company: "Hooii Corp", appliedAgo: "2 weeks ago", status: "Offered" },
-  { id: 6, title: "Backend Developer", meta: "Full-time • On-site", company: "Apex Labs", appliedAgo: "2 weeks ago", status: "Applied" },
-  { id: 7, title: "UX Researcher", meta: "Part-time • Remote", company: "Vertex Group", appliedAgo: "3 weeks ago", status: "Shortlisted" },
-  { id: 8, title: "DevOps Engineer", meta: "Contract • Remote", company: "Netic Solutions", appliedAgo: "3 weeks ago", status: "Shortlisted" },
-  { id: 9, title: "Marketing Manager", meta: "Full-time • On-site", company: "BrightWave", appliedAgo: "1 month ago", status: "Review" },
-  { id: 10, title: "QA Automation Engineer", meta: "Full-time • Remote", company: "Quantum Soft", appliedAgo: "1 month ago", status: "Review" },
-  { id: 11, title: "Mobile App Developer", meta: "Full-time • Hybrid", company: "Skyline Digital", appliedAgo: "1 month ago", status: "Shortlisted" },
-  { id: 12, title: "Data Analyst", meta: "Full-time • On-site", company: "Prime Analytics", appliedAgo: "1 month ago", status: "Rejected" },
-  { id: 13, title: "Graphics Designer", meta: "Part-time • Remote", company: "PixelWorks", appliedAgo: "1 month ago", status: "Applied" },
-  { id: 14, title: "WordPress Developer", meta: "Contract • Remote", company: "Nexa Agency", appliedAgo: "2 months ago", status: "Shortlisted" },
-  { id: 15, title: "Business Analyst", meta: "Full-time • On-site", company: "GlobalVista", appliedAgo: "2 months ago", status: "Applied" },
-  { id: 16, title: "Security Engineer", meta: "Full-time • Hybrid", company: "Fortify Systems", appliedAgo: "2 months ago", status: "Shortlisted" },
-  { id: 17, title: "Content Strategist", meta: "Part-time • Remote", company: "WordCraft", appliedAgo: "2 months ago", status: "Rejected" },
-  { id: 18, title: "React Native Developer", meta: "Full-time • Remote", company: "AppForge", appliedAgo: "3 months ago", status: "Shortlisted" },
-  { id: 19, title: "Sales Executive", meta: "Full-time • On-site", company: "MarketPro", appliedAgo: "3 months ago", status: "Applied" },
-  { id: 20, title: "Machine Learning Engineer", meta: "Full-time • Hybrid", company: "Neural Tech", appliedAgo: "3 months ago", status: "Offered" },
-  { id: 21, title: "HR Coordinator", meta: "Full-time • On-site", company: "PeopleFirst", appliedAgo: "3 months ago", status: "Rejected" },
-  { id: 22, title: "Frontend Developer", meta: "Full-time • Remote", company: "WebCraft Studio", appliedAgo: "4 months ago", status: "Shortlisted" },
-  { id: 23, title: "Financial Analyst", meta: "Full-time • On-site", company: "Ledger & Co", appliedAgo: "4 months ago", status: "Applied" },
-  { id: 24, title: "Game Developer", meta: "Contract • Hybrid", company: "PlayGrid", appliedAgo: "4 months ago", status: "Offered" },
-];
 
 // Applications shown per page (footer pagination)
 const APPS_PER_PAGE = 5;
@@ -111,25 +81,68 @@ const tileColor = (key: string) =>
   ];
 
 export default function Application() {
-  // পরে এটা real API data দিয়ে replace করবেন
-  const applications = DUMMY_APPLICATIONS;
+  const { data: session } = useSession();
+  const user = session?.user;
 
-  // Active / Archived toggle
+  const [applications, setApplications] = useState<ApplicationRow[]>([]);
+  const [jobs, setJobs] = useState<JobRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState("");
+
+  // Active / Archived toggle (archived is a placeholder until the
+  // backend grows an archived field)
   const [tab, setTab] = useState<(typeof TABS)[number]>("Active");
 
   // Footer pagination
   const [page, setPage] = useState(1);
 
-  // Stats computed from the (dummy) data — API আসার পরেও একই logic চলবে
+  useEffect(() => {
+    if (!user?.email) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    // All applications + all jobs (so every jobId can show the full
+    // job data — type, remote, salary)
+    Promise.all([getApplications(), getJobs()])
+      .then(([allApps, allJobs]) => {
+        setApplications(allApps);
+        setJobs(allJobs);
+        setApiError("");
+      })
+      .catch((err) => {
+        setApiError(
+          err?.message || "Failed to load applications from the API."
+        );
+      })
+      .finally(() => setIsLoading(false));
+  }, [user?.email]);
+
+  // Only this user's applications — matched by email
+  const myApplications = useMemo(
+    () => applications.filter((app) => app.email === user?.email),
+    [applications, user?.email]
+  );
+
+  // jobId -> full job document, for the row subtitles
+  const jobsById = useMemo(
+    () => new Map(jobs.map((job) => [job._id, job])),
+    [jobs]
+  );
+
+  // Stats computed from this user's real data
   const stats = useMemo(() => {
-    const total = applications.length;
-    const shortlisted = applications.filter(
+    const total = myApplications.length;
+    const shortlisted = myApplications.filter(
       (a) => a.status === "Shortlisted"
     ).length;
-    const interviews = applications.filter(
+    const interviews = myApplications.filter(
       (a) => a.status === "Review"
     ).length;
-    const offered = applications.filter((a) => a.status === "Offered").length;
+    const offered = myApplications.filter(
+      (a) => a.status === "Offered"
+    ).length;
     return {
       total,
       shortlisted,
@@ -137,13 +150,13 @@ export default function Application() {
       successRate:
         total > 0 ? `${Math.round((offered / total) * 100)}%` : "0%",
     };
-  }, [applications]);
+  }, [myApplications]);
 
   // The rows for the current tab + page
   const filtered =
     tab === "Archived"
-      ? [] // archived এখনো dummy data তে নেই
-      : applications;
+      ? [] // no archived field in the DB yet
+      : myApplications;
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / APPS_PER_PAGE));
   const safePage = Math.min(page, totalPages);
@@ -151,6 +164,23 @@ export default function Application() {
     (safePage - 1) * APPS_PER_PAGE,
     safePage * APPS_PER_PAGE
   );
+
+  // Sign-in prompt — applications belong to a user
+  if (!isLoading && !user) {
+    return (
+      <div className="mx-auto w-full max-w-[1280px] px-4 py-16 text-center sm:px-6">
+        <p className="rounded-2xl border border-white/[0.07] bg-[#111114] px-5 py-10 text-sm text-gray-400">
+          Sign in as a job seeker to see your applications.
+        </p>
+        <Link
+          href="/sign-in"
+          className="mt-4 inline-block text-sm text-gray-400 underline-offset-4 hover:text-white hover:underline"
+        >
+          ← Go to Sign In
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-6">
@@ -225,8 +255,23 @@ export default function Application() {
 
       {/* Applications table */}
       <div className="mt-6 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#111114]">
+        {/* Loading */}
+        {isLoading && (
+          <div className="flex items-center gap-2 px-5 py-12 text-sm text-gray-500">
+            <Spinner className="text-purple-400" />
+            Loading applications…
+          </div>
+        )}
+
+        {/* API error */}
+        {!isLoading && apiError && (
+          <p className="px-5 py-12 text-center text-sm text-red-300">
+            {apiError} — is the backend running?
+          </p>
+        )}
+
         {/* Empty */}
-        {filtered.length === 0 && (
+        {!isLoading && !apiError && filtered.length === 0 && (
           <div className="px-5 py-12 text-center">
             <p className="text-sm font-semibold text-white">
               {tab === "Archived"
@@ -250,7 +295,7 @@ export default function Application() {
         )}
 
         {/* Desktop table (≥md) */}
-        {filtered.length > 0 && (
+        {!isLoading && !apiError && filtered.length > 0 && (
           <>
             <table className="hidden w-full text-left text-sm md:table">
               <thead>
@@ -265,102 +310,124 @@ export default function Application() {
                 </tr>
               </thead>
               <tbody>
-                {visibleApps.map((app) => (
-                  <tr
-                    key={app.id}
-                    className="border-b border-white/[0.05] last:border-0 hover:bg-white/[0.02]"
-                  >
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
+                {visibleApps.map((app) => {
+                  // Full job data for this application's jobId
+                  const job = jobsById.get(app.jobId);
+                  return (
+                    <tr
+                      key={app._id}
+                      className="border-b border-white/[0.05] last:border-0 hover:bg-white/[0.02]"
+                    >
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={cn(
+                              "flex size-9 shrink-0 items-center justify-center rounded-lg",
+                              tileColor(app.companyName || app.jobTitle)
+                            )}
+                          >
+                            <FileText className="size-4" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-white">
+                              {app.jobTitle}
+                            </p>
+                            {job && (
+                              <p className="truncate text-xs text-gray-500">
+                                {job.jobType} •{" "}
+                                {job.remote ? "Remote" : "On-site"} •{" "}
+                                {salaryLabel(job)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-gray-400">
+                        {app.companyName}
+                      </td>
+                      {/* "Applied X ago" comes from the ObjectId timestamp */}
+                      <td className="px-5 py-4 text-gray-400">
+                        {timeAgo(postedDateFromId(app._id))}
+                      </td>
+                      <td className="px-5 py-4">
                         <span
                           className={cn(
-                            "flex size-9 shrink-0 items-center justify-center rounded-lg",
-                            tileColor(app.company)
+                            "inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold",
+                            STATUS_STYLES[app.status ?? "Applied"]
                           )}
                         >
-                          <FileText className="size-4" />
+                          {app.status ?? "Applied"}
                         </span>
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold text-white">
-                            {app.title}
-                          </p>
-                          <p className="text-xs text-gray-500">{app.meta}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 text-gray-400">{app.company}</td>
-                    <td className="px-5 py-4 text-gray-400">
-                      {app.appliedAgo}
-                    </td>
-                    <td className="px-5 py-4">
-                      <span
-                        className={cn(
-                          "inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold",
-                          STATUS_STYLES[app.status]
-                        )}
-                      >
-                        {app.status}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <Link
-                        href="/browsejobs"
-                        className="text-sm font-medium text-white underline-offset-4 hover:underline"
-                      >
-                        Details
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <Link
+                          href={`/browsejobs/${app.jobId}`}
+                          className="text-sm font-medium text-white underline-offset-4 hover:underline"
+                        >
+                          Details
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
 
             {/* Mobile cards (<md) */}
             <div className="md:hidden">
-              {visibleApps.map((app) => (
-                <div
-                  key={app.id}
-                  className="border-b border-white/[0.05] p-4 last:border-0"
-                >
-                  <div className="flex items-start gap-3">
-                    <span
-                      className={cn(
-                        "flex size-9 shrink-0 items-center justify-center rounded-lg",
-                        tileColor(app.company)
-                      )}
-                    >
-                      <FileText className="size-4" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="truncate font-semibold text-white">
-                          {app.title}
+              {visibleApps.map((app) => {
+                const job = jobsById.get(app.jobId);
+                return (
+                  <div
+                    key={app._id}
+                    className="border-b border-white/[0.05] p-4 last:border-0"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span
+                        className={cn(
+                          "flex size-9 shrink-0 items-center justify-center rounded-lg",
+                          tileColor(app.companyName || app.jobTitle)
+                        )}
+                      >
+                        <FileText className="size-4" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="truncate font-semibold text-white">
+                            {app.jobTitle}
+                          </p>
+                          <span
+                            className={cn(
+                              "shrink-0 rounded-md border px-2 py-0.5 text-[11px] font-semibold",
+                              STATUS_STYLES[app.status ?? "Applied"]
+                            )}
+                          >
+                            {app.status ?? "Applied"}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 truncate text-xs text-gray-500">
+                          {app.companyName}
+                          {job &&
+                            ` • ${job.jobType} • ${
+                              job.remote ? "Remote" : "On-site"
+                            }`}
                         </p>
-                        <span
-                          className={cn(
-                            "shrink-0 rounded-md border px-2 py-0.5 text-[11px] font-semibold",
-                            STATUS_STYLES[app.status]
-                          )}
-                        >
-                          {app.status}
-                        </span>
-                      </div>
-                      <p className="mt-0.5 text-xs text-gray-500">
-                        {app.company} • {app.meta}
-                      </p>
-                      <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-                        <span>Applied {app.appliedAgo}</span>
-                        <Link
-                          href="/browsejobs"
-                          className="font-medium text-white underline-offset-4 hover:underline"
-                        >
-                          Details
-                        </Link>
+                        <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                          <span>
+                            Applied {timeAgo(postedDateFromId(app._id))}
+                          </span>
+                          <Link
+                            href={`/browsejobs/${app.jobId}`}
+                            className="font-medium text-white underline-offset-4 hover:underline"
+                          >
+                            Details
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Footer — count + pagination */}
