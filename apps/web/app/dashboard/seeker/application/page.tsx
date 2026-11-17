@@ -103,11 +103,11 @@ export default function Application() {
     }
 
     setIsLoading(true);
-    // All applications + all jobs (so every jobId can show the full
-    // job data — type, remote, salary)
-    Promise.all([getApplications(), getJobs()])
-      .then(([allApps, allJobs]) => {
-        setApplications(allApps);
+    // This user's applications (backend filters by ?email=) + all jobs
+    // (so every jobId can show the full job data — type, remote, salary)
+    Promise.all([getApplications(user.email), getJobs()])
+      .then(([userApps, allJobs]) => {
+        setApplications(userApps);
         setJobs(allJobs);
         setApiError("");
       })
@@ -119,11 +119,9 @@ export default function Application() {
       .finally(() => setIsLoading(false));
   }, [user?.email]);
 
-  // Only this user's applications — matched by email
-  const myApplications = useMemo(
-    () => applications.filter((app) => app.email === user?.email),
-    [applications, user?.email]
-  );
+  // Already filtered by the backend (?email=) — these are this user's
+  // applications only
+  const myApplications = applications;
 
   // jobId -> full job document, for the row subtitles
   const jobsById = useMemo(
