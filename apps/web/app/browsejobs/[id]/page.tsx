@@ -25,6 +25,7 @@ import {
 } from "@/lib/jobs";
 import { useSession } from "@/lib/auth-client";
 import { applyTojob } from "@/lib/action/jobs";
+import { getApplicationscount } from "@/lib/api/applications";
 
 // "Develop REST APIs, manage databases, optimize server performance."
 // -> ["Develop REST APIs", "Manage databases", "Optimize server performance"]
@@ -101,7 +102,7 @@ function JobDetailsContent() {
       })
       .finally(() => setIsLoading(false));
   }, [id]);
-  const {data:session}= useSession()
+  const { data: session } = useSession()
 
   // console.log(session?.user)
   const user = session?.user
@@ -126,41 +127,58 @@ function JobDetailsContent() {
     }
 
     if (!job) return;
-
-    try {
-      const result = await applyTojob({
-        jobId: job._id,
-        userId: user.id,
-        email: user.email,
-        jobTitle: job.title,
-        companyName: job.company,
-      });
-
-      if (result.insertedId) {
-        toast.add({
-          title: "Application submitted",
-          description: `You applied for ${job.title} at ${job.company}`,
-          type: "success",
-        });
-        // Relative URL — the absolute localhost one breaks in production
-        router.push("/browsejobs");
-      } else {
-        throw new Error("The application could not be saved.");
-      }
-    } catch (err) {
+    const countresult = await getApplicationscount(user.email)
+    // less more the 10 and not premium user 
+    if (countresult.count >= 10) {
+      // redireact to the payment page
+      router.push('/payment')
       toast.add({
-        title: "Could not apply",
-        description:
-          err instanceof Error && err.message
-            ? err.message
-            : "Something went wrong — please try again.",
-        type: "error",
+        title: "Cannot apply",
+        description: "Only job seeker accounts can apply to jobs 10 over . now bye premium ",
+        type: "info",
       });
+      return;
     }
+    else {
+      try {
+        const result = await applyTojob({
+          jobId: job._id,
+          userId: user.id,
+          email: user.email,
+          jobTitle: job.title,
+          companyName: job.company,
+        });
+
+        if (result.insertedId) {
+          toast.add({
+            title: "Application submitted",
+            description: `You applied for ${job.title} at ${job.company}`,
+            type: "success",
+          });
+          // Relative URL — the absolute localhost one breaks in production
+          router.push("/browsejobs");
+        } else {
+          throw new Error("The application could not be saved.");
+        }
+      } catch (err) {
+        toast.add({
+          title: "Could not apply",
+          description:
+            err instanceof Error && err.message
+              ? err.message
+              : "Something went wrong — please try again.",
+          type: "error",
+        });
+      }
+
+    }
+
+
+
   };
 
   // TODO: implement — save/bookmark this job
-  const handleBookmark = () => {};
+  const handleBookmark = () => { };
 
   if (isLoading) {
     return (

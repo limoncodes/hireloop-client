@@ -17,3 +17,16 @@ export const getApplications = async (email?: string): Promise<
 
   return res.json();
 };
+export const getApplicationscount = async (email?: string): Promise<
+  {count:number}
+> => {
+  const res = await fetch(
+    `${BASE_URL}/applicants/count${email ? `?email=${encodeURIComponent(email)}` : ""}`
+  );
+
+  if (!res.ok) {
+    throw new Error(`Failed to load applications (${res.status})`);
+  }
+
+  return res.json();
+};

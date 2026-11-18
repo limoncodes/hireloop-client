@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, Suspense } from "react";
 import Link from "next/link";
 
 import { Button } from "@workspace/ui/components/button";
@@ -26,7 +26,9 @@ import { FcGoogle } from "react-icons/fc";
 import { authClient } from "@/lib/auth-client";
 import { useSearchParams } from "next/navigation";
 
-const SignIn = () => {
+// The real page — reads ?redirectTo= from the URL (needs Suspense above it,
+// because useSearchParams() bails out of static prerendering)
+const SignInContent = () => {
   const searchparams = useSearchParams()
   const redirectTo = searchparams.get("redirectTo")?? "/"
 
@@ -474,4 +476,18 @@ const SignIn = () => {
   );
 };
 
-export default SignIn;
+// useSearchParams() needs a Suspense boundary when the page is
+// statically prerendered — so the real page lives in the inner component
+export default function SignInPage() {
+  return (
+    <Suspense
+      fallback={
+        <p className="flex min-h-[calc(100dvh-64px)] items-center justify-center text-sm text-gray-500">
+          Loading…
+        </p>
+      }
+    >
+      <SignInContent />
+    </Suspense>
+  );
+}
