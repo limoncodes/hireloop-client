@@ -27,6 +27,10 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const { data: userdata } = useSession()
+
+  // Checkout is a focused, stand-alone flow — hide the site navigation.
+  if (pathname.startsWith("/checkout")) return null
+
   const handlesignout = async ()=>{
     await authClient.signOut()
 

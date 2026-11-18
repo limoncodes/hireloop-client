@@ -131,7 +131,7 @@ function JobDetailsContent() {
     // less more the 10 and not premium user 
     if (countresult.count >= 10) {
       // redireact to the payment page
-      router.push('/payment')
+      router.push('/checkout')
       toast.add({
         title: "Cannot apply",
         description: "Only job seeker accounts can apply to jobs 10 over . now bye premium ",
