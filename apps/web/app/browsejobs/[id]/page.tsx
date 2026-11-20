@@ -1,8 +1,8 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { useParams, useRouter } from "next/navigation"
 import {
   BadgeCheck,
   Bookmark,
@@ -11,21 +11,22 @@ import {
   CreditCard,
   Layers,
   MapPin,
-} from "lucide-react";
+} from "lucide-react"
 
-import { Spinner } from "@workspace/ui/components/spinner";
-import { toast } from "@workspace/ui/components/toast";
-import { getjobsByid } from "@/lib/api/jobs";
+import { Spinner } from "@workspace/ui/components/spinner"
+import { toast } from "@workspace/ui/components/toast"
+import { getjobsByid } from "@/lib/api/jobs"
 import {
   type JobRow,
   dateLabel,
   daysLeftLabel,
   locationLabel,
   salaryLabel,
-} from "@/lib/jobs";
-import { useSession } from "@/lib/auth-client";
-import { applyTojob } from "@/lib/action/jobs";
-import { getApplicationscount } from "@/lib/api/applications";
+} from "@/lib/jobs"
+import { useSession } from "@/lib/auth-client"
+import { applyTojob } from "@/lib/action/jobs"
+import { getApplicationscount } from "@/lib/api/applications"
+import { getUserPremiumById } from "@/lib/api/user"
 
 // "Develop REST APIs, manage databases, optimize server performance."
 // -> ["Develop REST APIs", "Manage databases", "Optimize server performance"]
@@ -34,7 +35,7 @@ const toList = (text: string) =>
     .split(",")
     .map((part) => part.trim().replace(/\.$/, ""))
     .filter(Boolean)
-    .map((part) => (part ? part.charAt(0).toUpperCase() + part.slice(1) : part));
+    .map((part) => (part ? part.charAt(0).toUpperCase() + part.slice(1) : part))
 
 // One of the 4 small stat cards (Salary / Location / Job Type / Category)
 function InfoCard({
@@ -42,9 +43,9 @@ function InfoCard({
   label,
   value,
 }: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
+  icon: React.ReactNode
+  label: string
+  value: string
 }) {
   return (
     <div className="rounded-2xl border border-white/[0.07] bg-[#111114] p-4">
@@ -56,7 +57,7 @@ function InfoCard({
       </p>
       <p className="mt-1 text-sm font-semibold text-white">{value}</p>
     </div>
-  );
+  )
 }
 
 // A bulleted list rendered from one comma-separated DB string
@@ -73,39 +74,60 @@ function BulletList({ items }: { items: string[] }) {
         </li>
       ))}
     </ul>
-  );
+  )
 }
 
 function JobDetailsContent() {
-  const params = useParams();
-  const id = params?.id as string | undefined;
+  const params = useParams()
+  const id = params?.id as string | undefined
 
-  const [job, setJob] = useState<JobRow | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [apiError, setApiError] = useState("");
+  const [job, setJob] = useState<JobRow | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [apiError, setApiError] = useState("")
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) return
 
-    setIsLoading(true);
+    setIsLoading(true)
     getjobsByid(id)
       .then((data) => {
         if (data && data._id) {
-          setJob(data);
-          setApiError("");
+          setJob(data)
+          setApiError("")
         } else {
-          setApiError("Job not found.");
+          setApiError("Job not found.")
         }
       })
       .catch((err) => {
-        setApiError(err?.message || "Failed to load the job from the API.");
+        setApiError(err?.message || "Failed to load the job from the API.")
       })
-      .finally(() => setIsLoading(false));
-  }, [id]);
+      .finally(() => setIsLoading(false))
+  }, [id])
   const { data: session } = useSession()
 
   // console.log(session?.user)
   const user = session?.user
+
+  // Log premium as soon as the page/session is ready, not only on Apply click.
+  useEffect(() => {
+    if (!user?.id) {
+      console.log("PREMIUM: no logged-in user (session not ready)")
+      return
+    }
+
+    console.log("PREMIUM checking:", {
+      id: user.id,
+      email: user.email,
+    })
+
+    getUserPremiumById(user.id)
+      .then((isPremium) => {
+        console.log("PREMIUM:", isPremium)
+      })
+      .catch((err) => {
+        console.error("PREMIUM check failed:", err)
+      })
+  }, [user?.id, user?.email])
 
   const router = useRouter()
 
@@ -113,8 +135,8 @@ function JobDetailsContent() {
   // recruiters are told they cannot apply
   const handleApply = async () => {
     if (!user) {
-      router.push(`/sign-in?redirectTo=/browsejobs/${job?._id}`);
-      return;
+      router.push(`/sign-in?redirectTo=/browsejobs/${job?._id}`)
+      return
     }
 
     if (user.role !== "seeker") {
@@ -122,24 +144,38 @@ function JobDetailsContent() {
         title: "Cannot apply",
         description: "Only job seeker accounts can apply to jobs.",
         type: "info",
-      });
-      return;
+      })
+      return
     }
 
-    if (!job) return;
+    if (!job) return
     const countresult = await getApplicationscount(user.email)
-    // less more the 10 and not premium user 
-    if (countresult.count >= 10) {
+
+    // Premium users can apply without the 10-application limit.
+    let isPremium = false
+    try {
+      isPremium = await getUserPremiumById(user.id)
+    } catch (err) {
+      console.error("Could not check premium status:", err)
+    }
+    console.log("premium check:", {
+      userId: user.id,
+      email: user.email,
+      applications: countresult.count,
+      isPremium,
+    })
+
+    if (countresult.count >= 10 && !isPremium) {
       // redireact to the payment page
-      router.push('/checkout')
+      router.push("/checkout")
       toast.add({
         title: "Cannot apply",
-        description: "Only job seeker accounts can apply to jobs 10 over . now bye premium ",
+        description:
+          "Only job seeker accounts can apply to jobs 10 over . now bye premium ",
         type: "info",
-      });
-      return;
-    }
-    else {
+      })
+      return
+    } else {
       try {
         const result = await applyTojob({
           jobId: job._id,
@@ -147,18 +183,18 @@ function JobDetailsContent() {
           email: user.email,
           jobTitle: job.title,
           companyName: job.company,
-        });
+        })
 
         if (result.insertedId) {
           toast.add({
             title: "Application submitted",
             description: `You applied for ${job.title} at ${job.company}`,
             type: "success",
-          });
+          })
           // Relative URL — the absolute localhost one breaks in production
-          router.push("/browsejobs");
+          router.push("/browsejobs")
         } else {
-          throw new Error("The application could not be saved.");
+          throw new Error("The application could not be saved.")
         }
       } catch (err) {
         toast.add({
@@ -168,17 +204,13 @@ function JobDetailsContent() {
               ? err.message
               : "Something went wrong — please try again.",
           type: "error",
-        });
+        })
       }
-
     }
-
-
-
-  };
+  }
 
   // TODO: implement — save/bookmark this job
-  const handleBookmark = () => { };
+  const handleBookmark = () => {}
 
   if (isLoading) {
     return (
@@ -186,7 +218,7 @@ function JobDetailsContent() {
         <Spinner className="text-purple-400" />
         Loading job…
       </div>
-    );
+    )
   }
 
   if (apiError || !job) {
@@ -204,12 +236,12 @@ function JobDetailsContent() {
           </Link>
         </p>
       </div>
-    );
+    )
   }
 
-  const initial = job.company?.trim()?.[0]?.toUpperCase() || "J";
-  const responsibilities = toList(job.responsibilities);
-  const requirements = toList(job.requirements);
+  const initial = job.company?.trim()?.[0]?.toUpperCase() || "J"
+  const responsibilities = toList(job.responsibilities)
+  const requirements = toList(job.requirements)
 
   return (
     <div className="mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-6">
@@ -363,9 +395,9 @@ function JobDetailsContent() {
         </aside>
       </div>
     </div>
-  );
+  )
 }
 
 export default function JobDetailsPage() {
-  return <JobDetailsContent />;
+  return <JobDetailsContent />
 }
