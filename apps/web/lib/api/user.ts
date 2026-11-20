@@ -14,6 +14,6 @@ export const getUserPremiumById = async (userId: string): Promise<boolean> => {
   }
 
   const data = await response.json()
-  console.log("GET /users/:id/premium =>", data)
+  
   return data?.premium === true
 }

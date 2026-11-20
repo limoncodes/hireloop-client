@@ -158,14 +158,14 @@ function JobDetailsContent() {
     } catch (err) {
       console.error("Could not check premium status:", err)
     }
-    console.log("premium check:", {
+   /*  console.log("premium check:", {
       userId: user.id,
       email: user.email,
       applications: countresult.count,
       isPremium,
-    })
+    }) */
 
-    if (countresult.count >= 10 && !isPremium) {
+    if (countresult.count >= 2 && !isPremium) {
       // redireact to the payment page
       router.push("/checkout")
       toast.add({
