@@ -1,9 +1,8 @@
+import { RoleOverview } from "../components/RoleOverview"
+import { requireRole } from "@/lib/dashboard"
 
+export default async function SeekerDashboardPage() {
+  const { name, email } = await requireRole("seeker")
 
-const Seeker = () => {
-  return (
-    <div>Seeker</div>
-  )
+  return <RoleOverview role="seeker" name={name} email={email} />
 }
-
-export default Seeker

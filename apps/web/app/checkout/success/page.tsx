@@ -443,7 +443,7 @@ export default async function CheckOutSuccessPage({
         </Link>
 
         <Link
-          href="/dashboard/seeker"
+          href="/dashboard"
           className="group rounded-2xl border border-white/[0.07] bg-[#0d0d11] p-5 transition-colors hover:border-[#5c53fe]/40 hover:bg-[#111117] focus-visible:ring-2 focus-visible:ring-[#5c53fe]/40 focus-visible:outline-none"
         >
           <div className="flex items-start justify-between gap-4">

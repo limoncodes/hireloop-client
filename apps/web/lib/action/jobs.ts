@@ -1,32 +1,36 @@
-import { type ApplicationType, type JobForm } from "@/lib/jobs";
+import { type ApplicationType, type JobForm } from "@/lib/jobs"
 
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL 
-
-
-export const createJobs = async (data: JobForm)=>{
-    const res = await fetch(`${BASE_URL}/jobs`,{
-        method:"POST",
-        headers:{
-            "content-type":"application/json"
-
-        },
-        body:JSON.stringify(data)
-    })
-    return res.json()
+// The form page builds `{ form, recruiterId }`. The backend stores flat
+// job documents, so spread `form` before sending — every job keeps the
+// same shape and the listings/readers never see a nested object.
+type CreateJobPayload = {
+  form: JobForm
+  recruiterId: string
 }
 
-export const deletJob = async (jobid:string)=>{
-    const res = await fetch(`${BASE_URL}/jobs/${jobid}`,{
-        method:"DELETE"
-    });
+export const createJobs = async (data: CreateJobPayload) => {
+  const res = await fetch(`${BASE_URL}/jobs`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ ...data.form, recruiterId: data.recruiterId }),
+  })
+  return res.json()
+}
 
-    if (!res.ok) {
-        throw new Error(`Failed to delete job (${res.status})`);
-    }
+export const deletJob = async (jobid: string) => {
+  const res = await fetch(`${BASE_URL}/jobs/${jobid}`, {
+    method: "DELETE",
+  })
 
-    return res.json();
+  if (!res.ok) {
+    throw new Error(`Failed to delete job (${res.status})`)
+  }
 
+  return res.json()
 }
 
 // Sends one application to the backend — the payload is the application
@@ -40,11 +44,11 @@ export const applyTojob = async (
       "content-type": "application/json",
     },
     body: JSON.stringify(data),
-  });
+  })
 
   if (!res.ok) {
-    throw new Error(`Failed to submit the application (${res.status})`);
+    throw new Error(`Failed to submit the application (${res.status})`)
   }
 
-  return res.json();
-};
+  return res.json()
+}

@@ -1,7 +1,7 @@
-﻿"use client";
+﻿"use client"
 
-import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useState } from "react"
+import Link from "next/link"
 import {
   Briefcase,
   Building2,
@@ -18,9 +18,9 @@ import {
   Trash2,
   Users,
   type LucideIcon,
-} from "lucide-react";
+} from "lucide-react"
 
-import { Button } from "@workspace/ui/components/button";
+import { Button } from "@workspace/ui/components/button"
 import {
   Table,
   TableBody,
@@ -28,10 +28,11 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@workspace/ui/components/table";
-import { cn } from "@workspace/ui/lib/utils";
+} from "@workspace/ui/components/table"
+import { cn } from "@workspace/ui/lib/utils"
 
-import { DeletejobDialog } from "@/app/components/DeletejobDialog";
+import { DeletejobDialog } from "@/app/components/DeletejobDialog"
+import { useSession } from "@/lib/auth-client"
 
 // Job types + display helpers live in apps/web/lib/jobs.ts so the
 // Browse Jobs page can reuse the exact same logic
@@ -45,25 +46,40 @@ import {
   postedDateFromId,
   salaryLabel,
   timeAgo,
-} from "@/lib/jobs";
-import { getJobs } from "@/lib/api/jobs";
+} from "@/lib/jobs"
+import { getJobs } from "@/lib/api/jobs"
 
 // Category -> icon + colors (used for the tile and the dept tag)
-const categoryMeta: Record<string, { icon: LucideIcon; text: string; bg: string }> = {
+const categoryMeta: Record<
+  string,
+  { icon: LucideIcon; text: string; bg: string }
+> = {
   Engineering: { icon: Code2, text: "text-purple-400", bg: "bg-purple-500/10" },
   Design: { icon: PenTool, text: "text-orange-400", bg: "bg-orange-500/10" },
-  Infrastructure: { icon: ServerCog, text: "text-blue-400", bg: "bg-blue-500/10" },
-  Marketing: { icon: Megaphone, text: "text-orange-400", bg: "bg-orange-500/10" },
+  Infrastructure: {
+    icon: ServerCog,
+    text: "text-blue-400",
+    bg: "bg-blue-500/10",
+  },
+  Marketing: {
+    icon: Megaphone,
+    text: "text-orange-400",
+    bg: "bg-orange-500/10",
+  },
   Quality: { icon: Settings, text: "text-yellow-400", bg: "bg-yellow-500/10" },
-};
+}
 
 const metaFor = (category: string) =>
-  categoryMeta[category] ?? { icon: Briefcase, text: "text-gray-400", bg: "bg-gray-500/10" };
+  categoryMeta[category] ?? {
+    icon: Briefcase,
+    text: "text-gray-400",
+    bg: "bg-gray-500/10",
+  }
 
 // ---- Shared pieces (used by both the mobile cards and the table) ----
 
 function StatusBadge({ status }: { status: JobStatus }) {
-  const expired = status === "Expired";
+  const expired = status === "Expired"
 
   return (
     <span
@@ -82,7 +98,7 @@ function StatusBadge({ status }: { status: JobStatus }) {
       />
       {status}
     </span>
-  );
+  )
 }
 
 function JobActions({
@@ -90,9 +106,9 @@ function JobActions({
   className,
   onDeleted,
 }: {
-  job: JobRow;
-  className?: string;
-  onDeleted?: () => void;
+  job: JobRow
+  className?: string
+  onDeleted?: () => void
 }) {
   return (
     <div className={cn("flex items-center gap-1.5", className)}>
@@ -116,15 +132,15 @@ function JobActions({
         <MoreVertical className="size-4" />
       </Button>
     </div>
-  );
+  )
 }
 
 // ---- Mobile card (shown below md) ----
 
 function JobCard({ job, onDeleted }: { job: JobRow; onDeleted?: () => void }) {
-  const meta = metaFor(job.category);
-  const Icon = meta.icon;
-  const expired = effectiveStatus(job) === "Expired";
+  const meta = metaFor(job.category)
+  const Icon = meta.icon
+  const expired = effectiveStatus(job) === "Expired"
 
   return (
     <div className="rounded-2xl border border-white/[0.07] bg-[#111114] p-4">
@@ -168,9 +184,7 @@ function JobCard({ job, onDeleted }: { job: JobRow; onDeleted?: () => void }) {
             {job.jobType}
           </span>
 
-          <span className="font-medium text-gray-300">
-            {salaryLabel(job)}
-          </span>
+          <span className="font-medium text-gray-300">{salaryLabel(job)}</span>
 
           <span className="flex items-center gap-1 text-gray-300">
             <Users className="size-3.5 text-gray-500" />
@@ -194,43 +208,54 @@ function JobCard({ job, onDeleted }: { job: JobRow; onDeleted?: () => void }) {
         <JobActions job={job} onDeleted={onDeleted} />
       </div>
     </div>
-  );
+  )
 }
 
 export default function ManageJobsPage() {
   // Only API data — nothing is shown until the jobs load
-  const [jobs, setJobs] = useState<JobRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [apiError, setApiError] = useState("");
+  const [jobs, setJobs] = useState<JobRow[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [apiError, setApiError] = useState("")
+  const { data: session, isPending } = useSession()
+  const recruiterId = session?.user?.id ?? ""
 
-  // Reusable so the delete dialog can refresh the list after deleting
+  // Reusable so the delete dialog can refresh the list after deleting.
+  // The recruiterId goes to the backend so only this recruiter's jobs load.
   const loadJobs = useCallback(() => {
-    setIsLoading(true);
+    if (!recruiterId) return
+    setIsLoading(true)
 
-    getJobs()
+    getJobs(`recruiterId=${encodeURIComponent(recruiterId)}`)
       .then((data) => {
         if (Array.isArray(data)) {
-          setJobs(data as JobRow[]);
-          setApiError("");
+          setJobs(data as JobRow[])
+          setApiError("")
         } else {
-          setApiError("Unexpected response from the jobs API.");
+          setApiError("Unexpected response from the jobs API.")
         }
       })
       .catch((err) => {
         // Backend not running / network error / bad status
-        setApiError(err?.message || "Failed to load jobs from the API.");
+        setApiError(err?.message || "Failed to load jobs from the API.")
       })
       .finally(() => {
-        setIsLoading(false);
-      });
-  }, []);
+        setIsLoading(false)
+      })
+  }, [recruiterId])
 
+  // Wait for the session before calling the API — otherwise the first
+  // request would fire without a recruiterId (and fetch everyone's jobs).
   useEffect(() => {
-    loadJobs();
-  }, [loadJobs]);
+    if (isPending) return
+    if (!recruiterId) {
+      setIsLoading(false)
+      return
+    }
+    loadJobs()
+  }, [isPending, recruiterId, loadJobs])
 
   return (
-    <div className="mx-auto w-full container px-4 py-6 sm:px-6">
+    <div className="container mx-auto w-full px-4 py-6 sm:px-6">
       {/* Header */}
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -339,9 +364,9 @@ export default function ManageJobsPage() {
 
             <TableBody>
               {jobs.map((job) => {
-                const meta = metaFor(job.category);
-                const Icon = meta.icon;
-                const expired = effectiveStatus(job) === "Expired";
+                const meta = metaFor(job.category)
+                const Icon = meta.icon
+                const expired = effectiveStatus(job) === "Expired"
 
                 return (
                   <TableRow
@@ -425,15 +450,19 @@ export default function ManageJobsPage() {
 
                     {/* Actions */}
                     <TableCell className="px-3 py-4 sm:px-4">
-                      <JobActions job={job} onDeleted={loadJobs} className="justify-end" />
+                      <JobActions
+                        job={job}
+                        onDeleted={loadJobs}
+                        className="justify-end"
+                      />
                     </TableCell>
                   </TableRow>
-                );
+                )
               })}
             </TableBody>
           </Table>
         </div>
       </div>
     </div>
-  );
+  )
 }
