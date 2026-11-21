@@ -84,7 +84,7 @@ const overview: Record<
       {
         title: "Users",
         description: "Manage accounts and assigned roles.",
-        href: "/dashboard/users",
+        href: "/dashboard/admin/users",
         icon: Users,
       },
       {

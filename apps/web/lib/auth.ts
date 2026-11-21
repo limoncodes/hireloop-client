@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { createAuthMiddleware, APIError } from "better-auth/api";
 import { MongoClient } from "mongodb";
 import { mongodbAdapter } from "@better-auth/mongo-adapter";
+import { admin } from "better-auth/plugins";
 
 const client = new MongoClient(process.env.BETTER_AUTH_DB_URL as string);
 const db = client.db("hireloopdb");
@@ -29,6 +30,9 @@ export const auth = betterAuth({
       },
     },
   },
+   plugins: [
+        admin() 
+    ],
 
   // Whitelist the role value server-side so clients can't store arbitrary data
   hooks: {

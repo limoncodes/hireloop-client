@@ -1,5 +1,5 @@
 import { createAuthClient } from "better-auth/react";
-import { inferAdditionalFields } from "better-auth/client/plugins";
+import { adminClient, inferAdditionalFields } from "better-auth/client/plugins";
 import type { auth } from "@/lib/auth";
 
 export const authClient = createAuthClient({
@@ -8,6 +8,7 @@ export const authClient = createAuthClient({
   plugins: [
     // Types the `role` additional field on sign-up/sign-in calls
     inferAdditionalFields<typeof auth>(),
+    adminClient()  
   ],
 });
 

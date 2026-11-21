@@ -108,7 +108,12 @@ const menuItemByRole: Record<UserRole, MenuItem[]> = {
       url: "/dashboard",
       icon: LayoutDashboard,
     },
-    { id: "users", name: "Users", url: "/dashboard/users", icon: Users },
+    {
+      id: "users",
+      name: "Users",
+      url: "/dashboard/admin/users",
+      icon: Users,
+    },
     {
       id: "companies",
       name: "Companies",
