@@ -114,6 +114,17 @@ function JobActions({
     <div className={cn("flex items-center gap-1.5", className)}>
       <Button
         nativeButton={false}
+        render={
+          <Link href={`/dashboard/recruiter/jobs/${job._id}/applications`} />
+        }
+        className="h-8 gap-1.5 rounded-lg bg-white/[0.06] px-3 text-xs font-bold text-gray-200 transition-colors hover:bg-white/[0.12] hover:text-white"
+      >
+        <Users className="size-3.5" />
+        Applications
+      </Button>
+
+      <Button
+        nativeButton={false}
         render={<Link href={`/dashboard/recruiter/jobs/new?id=${job._id}`} />}
         className="h-8 gap-1.5 rounded-lg bg-[#5C53FE] px-3 text-xs font-bold text-white transition-colors hover:bg-[#6D65FF]"
       >

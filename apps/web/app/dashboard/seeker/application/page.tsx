@@ -1,44 +1,29 @@
-"use client";
+"use client"
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import {
-  Download,
-  FileText,
-  Inbox,
-  Percent,
-  Star,
-  Users,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
+import { Download, FileText, Inbox, Percent, Star, Users } from "lucide-react"
 
-import { Spinner } from "@workspace/ui/components/spinner";
-import { getApplications } from "@/lib/api/applications";
-import { getJobs } from "@/lib/api/jobs";
-import { useSession } from "@/lib/auth-client";
+import { Spinner } from "@workspace/ui/components/spinner"
+import { getApplications } from "@/lib/api/applications"
+import { getJobs } from "@/lib/api/jobs"
+import { useSession } from "@/lib/auth-client"
 import {
   type ApplicationRow,
   type JobRow,
   postedDateFromId,
   salaryLabel,
   timeAgo,
-} from "@/lib/jobs";
-import { cn } from "@workspace/ui/lib/utils";
-import { BrowsePagination } from "@/components/browse-jobs/pagination";
+} from "@/lib/jobs"
+import { cn } from "@workspace/ui/lib/utils"
+import { BrowsePagination } from "@/components/browse-jobs/pagination"
+import { applicationStatus, STATUS_STYLES } from "@/lib/applications"
 
 // Applications shown per page (footer pagination)
-const APPS_PER_PAGE = 5;
+const APPS_PER_PAGE = 5
 
 // The Active / Archived segmented control
-const TABS = ["Active", "Archived"] as const;
-
-// Status -> pill colors (matches the Figma palette)
-const STATUS_STYLES: Record<string, string> = {
-  Applied: "bg-white/[0.06] text-gray-300 border-white/10",
-  Review: "bg-amber-500/15 text-amber-400 border-amber-500/20",
-  Shortlisted: "bg-blue-500/15 text-blue-400 border-blue-500/20",
-  Rejected: "bg-red-500/15 text-red-400 border-red-500/20",
-  Offered: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",
-};
+const TABS = ["Active", "Archived"] as const
 
 // One of the 4 stat cards on top
 function StatCard({
@@ -47,10 +32,10 @@ function StatCard({
   value,
   accent,
 }: {
-  icon: React.ReactNode;
-  label: string;
-  value: number | string;
-  accent?: string;
+  icon: React.ReactNode
+  label: string
+  value: number | string
+  accent?: string
 }) {
   return (
     <div className="rounded-2xl border border-white/[0.07] bg-[#111114] p-5">
@@ -62,7 +47,7 @@ function StatCard({
         {value}
       </p>
     </div>
-  );
+  )
 }
 
 // Job Title cell icon tile — colored by company name so rows differ a bit
@@ -72,96 +57,90 @@ const TILE_COLORS = [
   "bg-emerald-500/20 text-emerald-300",
   "bg-amber-500/20 text-amber-300",
   "bg-rose-500/20 text-rose-300",
-];
+]
 
 const tileColor = (key: string) =>
   TILE_COLORS[
-    [...key].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) %
-      TILE_COLORS.length
-  ];
+    [...key].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % TILE_COLORS.length
+  ]
 
 export default function Application() {
-  const { data: session } = useSession();
-  const user = session?.user;
+  const { data: session } = useSession()
+  const user = session?.user
 
-  const [applications, setApplications] = useState<ApplicationRow[]>([]);
-  const [jobs, setJobs] = useState<JobRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [apiError, setApiError] = useState("");
+  const [applications, setApplications] = useState<ApplicationRow[]>([])
+  const [jobs, setJobs] = useState<JobRow[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [apiError, setApiError] = useState("")
 
   // Active / Archived toggle (archived is a placeholder until the
   // backend grows an archived field)
-  const [tab, setTab] = useState<(typeof TABS)[number]>("Active");
+  const [tab, setTab] = useState<(typeof TABS)[number]>("Active")
 
   // Footer pagination
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(1)
 
   useEffect(() => {
     if (!user?.email) {
-      setIsLoading(false);
-      return;
+      setIsLoading(false)
+      return
     }
 
-    setIsLoading(true);
+    setIsLoading(true)
     // This user's applications (backend filters by ?email=) + all jobs
     // (so every jobId can show the full job data — type, remote, salary)
     Promise.all([getApplications(user.email), getJobs()])
       .then(([userApps, allJobs]) => {
-        setApplications(userApps);
-        setJobs(allJobs);
-        setApiError("");
+        setApplications(userApps)
+        setJobs(allJobs)
+        setApiError("")
       })
       .catch((err) => {
-        setApiError(
-          err?.message || "Failed to load applications from the API."
-        );
+        setApiError(err?.message || "Failed to load applications from the API.")
       })
-      .finally(() => setIsLoading(false));
-  }, [user?.email]);
+      .finally(() => setIsLoading(false))
+  }, [user?.email])
 
   // Already filtered by the backend (?email=) — these are this user's
   // applications only
-  const myApplications = applications;
+  const myApplications = applications
 
   // jobId -> full job document, for the row subtitles
   const jobsById = useMemo(
     () => new Map(jobs.map((job) => [job._id, job])),
     [jobs]
-  );
+  )
 
   // Stats computed from this user's real data
   const stats = useMemo(() => {
-    const total = myApplications.length;
+    const total = myApplications.length
     const shortlisted = myApplications.filter(
       (a) => a.status === "Shortlisted"
-    ).length;
+    ).length
     const interviews = myApplications.filter(
       (a) => a.status === "Review"
-    ).length;
-    const offered = myApplications.filter(
-      (a) => a.status === "Offered"
-    ).length;
+    ).length
+    const offered = myApplications.filter((a) => a.status === "Offered").length
     return {
       total,
       shortlisted,
       interviews,
-      successRate:
-        total > 0 ? `${Math.round((offered / total) * 100)}%` : "0%",
-    };
-  }, [myApplications]);
+      successRate: total > 0 ? `${Math.round((offered / total) * 100)}%` : "0%",
+    }
+  }, [myApplications])
 
   // The rows for the current tab + page
   const filtered =
     tab === "Archived"
       ? [] // no archived field in the DB yet
-      : myApplications;
+      : myApplications
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / APPS_PER_PAGE));
-  const safePage = Math.min(page, totalPages);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / APPS_PER_PAGE))
+  const safePage = Math.min(page, totalPages)
   const visibleApps = filtered.slice(
     (safePage - 1) * APPS_PER_PAGE,
     safePage * APPS_PER_PAGE
-  );
+  )
 
   // Sign-in prompt — applications belong to a user
   if (!isLoading && !user) {
@@ -177,7 +156,7 @@ export default function Application() {
           ← Go to Sign In
         </Link>
       </div>
-    );
+    )
   }
 
   return (
@@ -199,8 +178,8 @@ export default function Application() {
                 key={t}
                 type="button"
                 onClick={() => {
-                  setTab(t);
-                  setPage(1);
+                  setTab(t)
+                  setPage(1)
                 }}
                 className={cn(
                   "rounded-md px-3.5 py-1.5 text-xs font-semibold transition-colors",
@@ -302,15 +281,13 @@ export default function Application() {
                   <th className="px-5 py-3.5 font-medium">Company</th>
                   <th className="px-5 py-3.5 font-medium">Applied</th>
                   <th className="px-5 py-3.5 font-medium">Status</th>
-                  <th className="px-5 py-3.5 text-right font-medium">
-                    Action
-                  </th>
+                  <th className="px-5 py-3.5 text-right font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleApps.map((app) => {
                   // Full job data for this application's jobId
-                  const job = jobsById.get(app.jobId);
+                  const job = jobsById.get(app.jobId)
                   return (
                     <tr
                       key={app._id}
@@ -351,10 +328,10 @@ export default function Application() {
                         <span
                           className={cn(
                             "inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold",
-                            STATUS_STYLES[app.status ?? "Applied"]
+                            STATUS_STYLES[applicationStatus(app)]
                           )}
                         >
-                          {app.status ?? "Applied"}
+                          {applicationStatus(app)}
                         </span>
                       </td>
                       <td className="px-5 py-4 text-right">
@@ -366,7 +343,7 @@ export default function Application() {
                         </Link>
                       </td>
                     </tr>
-                  );
+                  )
                 })}
               </tbody>
             </table>
@@ -374,7 +351,7 @@ export default function Application() {
             {/* Mobile cards (<md) */}
             <div className="md:hidden">
               {visibleApps.map((app) => {
-                const job = jobsById.get(app.jobId);
+                const job = jobsById.get(app.jobId)
                 return (
                   <div
                     key={app._id}
@@ -397,10 +374,10 @@ export default function Application() {
                           <span
                             className={cn(
                               "shrink-0 rounded-md border px-2 py-0.5 text-[11px] font-semibold",
-                              STATUS_STYLES[app.status ?? "Applied"]
+                              STATUS_STYLES[applicationStatus(app)]
                             )}
                           >
-                            {app.status ?? "Applied"}
+                            {applicationStatus(app)}
                           </span>
                         </div>
                         <p className="mt-0.5 truncate text-xs text-gray-500">
@@ -424,7 +401,7 @@ export default function Application() {
                       </div>
                     </div>
                   </div>
-                );
+                )
               })}
             </div>
 
@@ -451,5 +428,5 @@ export default function Application() {
         )}
       </div>
     </div>
-  );
+  )
 }

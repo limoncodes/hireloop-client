@@ -54,6 +54,8 @@ export type JobRow = JobForm & {
   applicants: number
   status: JobStatus
   postedAgo: string
+  // Present on jobs posted by a logged-in recruiter; older seed jobs lack it.
+  recruiterId?: string
 }
 
 // ---- Small view helpers (pure functions, safe to use anywhere) ----
