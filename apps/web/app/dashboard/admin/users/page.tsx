@@ -192,14 +192,10 @@ export default function AdminUsersPage() {
     return matchesRole && matchesSearch
   })
 
-  /**
-   * UI-only role change. Replace the body with your request when the backend
-   * endpoint is ready — no persistence is implemented here.
-   */
+  /** Persist the role change through the backend PATCH /users/:id/role. */
   const handleRoleChange = async (userId: string, role: Role) => {
     setRoles((prev) => ({ ...prev, [userId]: role }))
-    // TODO: await authClient.admin.setRole({ userId, role })
-    await updateuserrole(userId, role as "admin" | "seeker" | "recruiter ")
+    await updateuserrole(userId, role)
   }
 
   const stats = [
