@@ -1,5 +1,4 @@
-import { headers } from "next/headers"
-import { auth } from "../auth"
+import { authClient } from "@/lib/auth-client"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
@@ -20,16 +19,12 @@ export const getUserPremiumById = async (userId: string): Promise<boolean> => {
 
   return data?.premium === true
 }
-export const getUsers = async () => {
-  const users = await auth.api.listUsers({
+// Client-safe: uses Better Auth's admin client (session cookies are sent by
+// the browser), so this module can be imported from Client Components too.
+export const getUsers = async () =>
+  authClient.admin.listUsers({
     query: {
-
-      sortBy: "name", // The field to sort by.
-      sortDirection: "desc", // The direction to sort by.
-
+      sortBy: "name",
+      sortDirection: "desc",
     },
-    // This endpoint requires session cookies.
-    headers: await headers(),
-  });
-  return users
-}
+  })
