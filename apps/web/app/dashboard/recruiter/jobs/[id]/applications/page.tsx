@@ -5,6 +5,7 @@ import { ArrowLeft, BriefcaseBusiness, FileText } from "lucide-react"
 import { ApplicationsTable } from "@/components/applications/applications-table"
 import { type ApplicationStatus } from "@/lib/applications"
 import { getApplicationsByJob, updateApplication } from "@/lib/api/applications"
+import { getToken } from "@/lib/core/server"
 import { getjobsByid } from "@/lib/api/jobs"
 import { requireRole } from "@/lib/dashboard"
 
@@ -20,16 +21,17 @@ async function saveApplicationStatus(
   status: ApplicationStatus
 ) {
   "use server"
-  await updateApplication(applicationId, { status })
+  await updateApplication(applicationId, { status }, await getToken())
 }
 
 export default async function JobApplicationsPage({ params }: PageProps) {
   const { user } = await requireRole("recruiter")
   const { id } = await params
+  const token = await getToken()
 
   const [job, applications] = await Promise.all([
     getjobsByid(id),
-    getApplicationsByJob(id),
+    getApplicationsByJob(id, token),
   ])
 
   if (!job) notFound()
