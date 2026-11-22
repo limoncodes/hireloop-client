@@ -2,6 +2,21 @@ import { type ApplicationType, type JobForm } from "@/lib/jobs"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
+/**
+ * This module is imported by Client Components, so it must never import
+ * `lib/core/server` (next/headers). Read the token from the browser's Better
+ * Auth session instead.
+ */
+const bearerHeaders = async (): Promise<Record<string, string>> => {
+  if (typeof window === "undefined") return {}
+
+  const { authClient } = await import("@/lib/auth-client")
+  const { data: session } = await authClient.getSession()
+  const token = session?.session?.token
+
+  return token ? { authorization: `Bearer ${token}` } : {}
+}
+
 // The form page builds `{ form, recruiterId }`. The backend stores flat
 // job documents, so spread `form` before sending — every job keeps the
 // same shape and the listings/readers never see a nested object.
@@ -42,6 +57,7 @@ export const applyTojob = async (
     method: "POST",
     headers: {
       "content-type": "application/json",
+      ...(await bearerHeaders()),
     },
     body: JSON.stringify(data),
   })
